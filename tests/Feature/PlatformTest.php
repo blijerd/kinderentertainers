@@ -380,6 +380,83 @@ class PlatformTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_entertainer_can_manage_own_rates(): void
+    {
+        $this->createRoles();
+        $user = User::factory()->create();
+        $user->assignRole('entertainer');
+        $entertainer = Entertainer::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->post(route('dashboard.rates.store'), [
+                'customer_type' => CustomerType::Consumer->value,
+                'starting_rate_cents' => 15000,
+                'hourly_rate_cents' => 7500,
+                'minimum_hours' => 2,
+                'travel_cost_cents_per_km' => 45,
+                'vat_included' => '1',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('rates', [
+            'entertainer_id' => $entertainer->id,
+            'customer_type' => CustomerType::Consumer->value,
+            'starting_rate_cents' => 15000,
+        ]);
+    }
+
+    public function test_entertainer_can_manage_own_availability(): void
+    {
+        $this->createRoles();
+        $user = User::factory()->create();
+        $user->assignRole('entertainer');
+        $entertainer = Entertainer::factory()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->post(route('dashboard.availabilities.store'), [
+                'date' => now()->addWeek()->toDateString(),
+                'start_time' => '10:00',
+                'end_time' => '16:00',
+                'status' => AvailabilityStatus::Available->value,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('availabilities', [
+            'entertainer_id' => $entertainer->id,
+            'status' => AvailabilityStatus::Available->value,
+        ]);
+    }
+
+    public function test_entertainer_cannot_manage_other_entertainer_data(): void
+    {
+        $this->createRoles();
+        $user = User::factory()->create();
+        $user->assignRole('entertainer');
+        Entertainer::factory()->create(['user_id' => $user->id]);
+        $otherEntertainer = Entertainer::factory()->create();
+        $rate = Rate::factory()->create(['entertainer_id' => $otherEntertainer->id]);
+        $availability = Availability::factory()->create(['entertainer_id' => $otherEntertainer->id]);
+
+        $this->actingAs($user)
+            ->patch(route('dashboard.rates.update', $rate), [
+                'customer_type' => $rate->customer_type->value,
+                'starting_rate_cents' => 99900,
+                'hourly_rate_cents' => 7500,
+                'minimum_hours' => 2,
+                'travel_cost_cents_per_km' => 45,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->patch(route('dashboard.availabilities.update', $availability), [
+                'date' => now()->addWeek()->toDateString(),
+                'start_time' => '10:00',
+                'end_time' => '16:00',
+                'status' => AvailabilityStatus::Available->value,
+            ])
+            ->assertForbidden();
+    }
+
     public function test_admin_can_manage_everything(): void
     {
         $this->createRoles();
