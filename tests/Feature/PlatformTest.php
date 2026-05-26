@@ -91,6 +91,52 @@ class PlatformTest extends TestCase
         ));
     }
 
+    public function test_availability_check_rejects_overlapping_availability_conflicts(): void
+    {
+        $entertainer = Entertainer::factory()->create(['active' => true]);
+        $date = now()->addWeek()->toDateString();
+
+        Availability::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'date' => $date,
+            'start_time' => '10:00',
+            'end_time' => '16:00',
+            'status' => AvailabilityStatus::Available,
+        ]);
+        Availability::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'date' => $date,
+            'start_time' => '12:00',
+            'end_time' => '13:00',
+            'status' => AvailabilityStatus::Option,
+        ]);
+
+        $this->assertFalse(app(CheckEntertainerAvailability::class)->handle($entertainer, $date, '11:30', '12:30'));
+    }
+
+    public function test_availability_check_rejects_confirmed_booking_conflicts(): void
+    {
+        $entertainer = Entertainer::factory()->create(['active' => true]);
+        $date = now()->addWeek()->toDateString();
+
+        Availability::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'date' => $date,
+            'start_time' => '10:00',
+            'end_time' => '16:00',
+            'status' => AvailabilityStatus::Available,
+        ]);
+        BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'event_date' => $date,
+            'start_time' => '12:00',
+            'end_time' => '13:00',
+            'status' => BookingStatus::Confirmed,
+        ]);
+
+        $this->assertFalse(app(CheckEntertainerAvailability::class)->handle($entertainer, $date, '11:30', '12:30'));
+    }
+
     public function test_booking_request_can_be_created(): void
     {
         $entertainer = Entertainer::factory()->create(['active' => true, 'slug' => 'sanne']);
