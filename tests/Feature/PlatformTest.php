@@ -11,6 +11,7 @@ use App\Models\Entertainer;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -98,6 +99,52 @@ class PlatformTest extends TestCase
             'entertainer_id' => $entertainer->id,
             'email' => 'marieke@example.com',
             'status' => BookingStatus::New->value,
+        ]);
+    }
+
+    public function test_setup_can_create_first_admin_user(): void
+    {
+        $this->get(route('setup'))
+            ->assertOk()
+            ->assertSee('Eerste gebruiker aanmaken');
+
+        $this->post(route('setup.store'), [
+            'name' => 'Eerste Beheerder',
+            'email' => 'admin@example.com',
+            'password' => 'veilig-wachtwoord',
+            'password_confirmation' => 'veilig-wachtwoord',
+        ])->assertRedirect(route('dashboard'));
+
+        $user = User::query()->where('email', 'admin@example.com')->firstOrFail();
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertTrue(Hash::check('veilig-wachtwoord', $user->password));
+        $this->assertTrue($user->hasRole('admin'));
+    }
+
+    public function test_setup_redirects_when_user_already_exists(): void
+    {
+        User::factory()->create();
+
+        $this->get(route('setup'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('status', 'Setup is al uitgevoerd.');
+    }
+
+    public function test_setup_post_does_not_create_user_when_user_already_exists(): void
+    {
+        User::factory()->create();
+
+        $this->post(route('setup.store'), [
+            'name' => 'Tweede Beheerder',
+            'email' => 'second@example.com',
+            'password' => 'veilig-wachtwoord',
+            'password_confirmation' => 'veilig-wachtwoord',
+        ])->assertRedirect(route('login'));
+
+        $this->assertDatabaseCount('users', 1);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'second@example.com',
         ]);
     }
 

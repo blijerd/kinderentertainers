@@ -1,6 +1,9 @@
 <x-layouts.app title="Inloggen">
     <section class="mx-auto max-w-md px-4 py-14 sm:px-6 lg:px-8">
         <h1 class="brand-heading text-3xl">Inloggen</h1>
+        @if (session('status'))
+            <p class="mt-4 rounded-md border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900">{{ session('status') }}</p>
+        @endif
         <form method="POST" action="{{ route('login') }}" class="brand-card mt-6 space-y-4 p-5">
             @csrf
             <label class="block space-y-1">
