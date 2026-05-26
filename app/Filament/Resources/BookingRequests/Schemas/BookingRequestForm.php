@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BookingRequests\Schemas;
 
 use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
+use App\Models\Skill;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -16,7 +17,8 @@ class BookingRequestForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Select::make('entertainer_id')->label('Entertainer')->relationship('entertainer', 'name')->searchable()->required(),
+            Select::make('entertainer_id')->label('Specifieke entertainer')->relationship('entertainer', 'name')->searchable()->nullable(),
+            Select::make('skill_id')->label('Gekozen skill')->relationship('skill', 'name')->searchable()->nullable(),
             Select::make('customer_type')->label('Klanttype')->options(collect(CustomerType::cases())->mapWithKeys(fn ($type) => [$type->value => $type->label()]))->required(),
             TextInput::make('name')->label('Naam')->required(),
             TextInput::make('company_name')->label('Bedrijfsnaam'),
@@ -30,6 +32,7 @@ class BookingRequestForm
             TextInput::make('city')->label('Plaats')->required(),
             TextInput::make('children_count')->label('Aantal kinderen')->numeric(),
             TextInput::make('children_ages')->label('Leeftijd kinderen'),
+            Select::make('desired_skills')->label('Gewenste skills')->options(fn (): array => Skill::query()->orderBy('name')->pluck('name', 'name')->all())->multiple()->preload(),
             Select::make('status')->label('Status')->options(collect(BookingStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()]))->required(),
             Textarea::make('message')->label('Bericht')->columnSpanFull(),
             Textarea::make('internal_note')->label('Interne notitie')->columnSpanFull(),

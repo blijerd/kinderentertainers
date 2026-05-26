@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Rates\Tables;
 
+use App\Enums\CustomerType;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class RatesTable
@@ -22,7 +24,16 @@ class RatesTable
                 TextColumn::make('minimum_hours')->label('Min. uren'),
                 IconColumn::make('vat_included')->label('Incl. btw')->boolean(),
             ])
-            ->filters([])
+            ->filters([
+                SelectFilter::make('customer_type')
+                    ->label('Doelgroep')
+                    ->options(collect(CustomerType::cases())->mapWithKeys(fn ($type) => [$type->value => $type->label()])->all()),
+                SelectFilter::make('entertainer_id')
+                    ->label('Entertainer')
+                    ->relationship('entertainer', 'name')
+                    ->searchable()
+                    ->preload(),
+            ])
             ->recordActions([EditAction::make()])
             ->toolbarActions([
                 BulkActionGroup::make([DeleteBulkAction::make()]),

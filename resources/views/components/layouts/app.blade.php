@@ -4,22 +4,25 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'Kinderentertainers.nl' }}</title>
+    <link rel="icon" href="{{ asset('brand/logo-mark.svg') }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
-    <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-            <a href="{{ route('home') }}" class="text-lg font-bold text-slate-950">Kinderentertainers.nl</a>
-            <nav class="flex items-center gap-4 text-sm font-medium text-slate-700">
-                <a href="{{ route('entertainers.index') }}" class="hover:text-teal-700">Entertainers</a>
+<body class="min-h-screen font-sans text-slate-900 antialiased">
+    <header class="sticky top-0 z-20 border-b border-teal-100/80 bg-white/92 backdrop-blur">
+        <div class="brand-shell flex items-center justify-between py-3">
+            <a href="{{ route('home') }}" class="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-teal">
+                <x-brand.logo />
+            </a>
+            <nav class="flex items-center gap-3 text-sm font-bold text-slate-700 sm:gap-5">
+                <a href="{{ route('entertainers.index') }}" class="hover:text-brand-coral">Entertainers</a>
                 @auth
-                    <a href="{{ route('dashboard') }}" class="hover:text-teal-700">Dashboard</a>
+                    <a href="{{ route('dashboard') }}" class="hover:text-brand-coral">Dashboard</a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button class="hover:text-teal-700">Uitloggen</button>
+                        <button class="hover:text-brand-coral">Uitloggen</button>
                     </form>
                 @else
-                    <a href="{{ route('login') }}" class="hover:text-teal-700">Inloggen</a>
+                    <a href="{{ route('login') }}" class="hover:text-brand-coral">Inloggen</a>
                 @endauth
             </nav>
         </div>

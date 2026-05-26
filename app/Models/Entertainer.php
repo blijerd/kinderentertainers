@@ -60,6 +60,11 @@ class Entertainer extends Model
         return $this->hasMany(BookingRequest::class);
     }
 
+    public function bookingRequestMatches(): HasMany
+    {
+        return $this->hasMany(BookingRequestMatch::class);
+    }
+
     protected function casts(): array
     {
         return [

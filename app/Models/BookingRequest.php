@@ -9,9 +9,11 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'entertainer_id',
+    'skill_id',
     'customer_type',
     'name',
     'company_name',
@@ -40,10 +42,26 @@ class BookingRequest extends Model
         return $this->belongsTo(Entertainer::class);
     }
 
+    public function skill(): BelongsTo
+    {
+        return $this->belongsTo(Skill::class);
+    }
+
+    public function matches(): HasMany
+    {
+        return $this->hasMany(BookingRequestMatch::class);
+    }
+
+    public function isGeneral(): bool
+    {
+        return $this->entertainer_id === null && $this->skill_id !== null;
+    }
+
     protected function casts(): array
     {
         return [
             'customer_type' => CustomerType::class,
+            'skill_id' => 'integer',
             'event_date' => 'date',
             'start_time' => 'datetime:H:i',
             'end_time' => 'datetime:H:i',

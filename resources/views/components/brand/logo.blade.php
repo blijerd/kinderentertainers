@@ -1,0 +1,24 @@
+@props([
+    'markOnly' => false,
+])
+
+<span {{ $attributes->merge(['class' => 'inline-flex items-center gap-3']) }}>
+    <svg class="h-10 w-10 shrink-0" viewBox="0 0 48 48" role="img" aria-label="Kinderentertainers.nl logo" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="3" width="42" height="42" rx="14" fill="#0F766E"/>
+        <path d="M13 28.5C17 35.5 31 35.5 35 28.5" stroke="#FFF7ED" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="18" cy="20" r="2.7" fill="#FFF7ED"/>
+        <circle cx="30" cy="20" r="2.7" fill="#FFF7ED"/>
+        <path d="M24 8.5L26.2 13L31 13.7L27.5 17.1L28.3 22L24 19.7L19.7 22L20.5 17.1L17 13.7L21.8 13L24 8.5Z" fill="#FBBF24"/>
+        <path d="M8.8 16.4L13.8 13.7" stroke="#FB7185" stroke-width="3" stroke-linecap="round"/>
+        <path d="M39.2 16.4L34.2 13.7" stroke="#2DD4BF" stroke-width="3" stroke-linecap="round"/>
+        <path d="M12.2 38.2L16.2 34.4" stroke="#FDBA74" stroke-width="3" stroke-linecap="round"/>
+        <path d="M35.8 38.2L31.8 34.4" stroke="#A7F3D0" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+
+    @unless ($markOnly)
+        <span class="leading-none">
+            <span class="block text-base font-black tracking-tight text-brand-ink sm:text-lg">Kinderentertainers</span>
+            <span class="block text-xs font-bold uppercase tracking-[0.18em] text-brand-coral">boekingsplatform</span>
+        </span>
+    @endunless
+</span>

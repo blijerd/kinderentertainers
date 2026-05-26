@@ -8,4 +8,69 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-brand-ink: #102a43;
+    --color-brand-teal: #0f766e;
+    --color-brand-teal-dark: #115e59;
+    --color-brand-mint: #a7f3d0;
+    --color-brand-sun: #fbbf24;
+    --color-brand-coral: #e05263;
+    --color-brand-peach: #fff7ed;
+    --color-brand-cloud: #f8fafc;
+}
+
+@layer base {
+    body {
+        background:
+            radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 28rem),
+            linear-gradient(180deg, #fff7ed 0%, #f8fafc 30rem);
+    }
+
+    input,
+    select,
+    textarea {
+        border-color: #cbd5e1;
+        background-color: #ffffff;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+        border-color: #0f766e;
+        box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.22);
+        outline: none;
+    }
+}
+
+@layer components {
+    .brand-shell {
+        @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+    }
+
+    .brand-card {
+        @apply rounded-lg border border-slate-200/80 bg-white shadow-sm;
+    }
+
+    .brand-panel {
+        @apply rounded-lg border border-teal-100 bg-white/90 shadow-sm shadow-teal-900/5;
+    }
+
+    .brand-kicker {
+        @apply text-sm font-black uppercase tracking-[0.18em] text-brand-coral;
+    }
+
+    .brand-heading {
+        @apply font-black tracking-tight text-brand-ink;
+    }
+
+    .brand-button {
+        @apply inline-flex items-center justify-center rounded-md bg-brand-teal px-5 py-3 text-sm font-bold text-white shadow-sm shadow-teal-900/15 transition hover:bg-brand-teal-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal;
+    }
+
+    .brand-button-secondary {
+        @apply inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-5 py-3 text-sm font-bold text-brand-ink transition hover:border-brand-coral hover:text-brand-coral;
+    }
+
+    .brand-pill {
+        @apply rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-brand-teal;
+    }
 }

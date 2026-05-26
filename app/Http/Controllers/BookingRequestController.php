@@ -5,29 +5,48 @@ namespace App\Http\Controllers;
 use App\Actions\CreateBookingRequest;
 use App\Http\Requests\StoreBookingRequestRequest;
 use App\Models\Entertainer;
+use App\Models\Skill;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class BookingRequestController extends Controller
 {
-    public function create(Entertainer $entertainer): View
+    public function create(?Entertainer $entertainer = null): View
     {
-        abort_unless($entertainer->active, 404);
+        if ($entertainer !== null) {
+            abort_unless($entertainer->active, 404);
+            $entertainer->load('skills');
+        }
 
-        return view('booking-requests.create', compact('entertainer'));
+        return view('booking-requests.create', [
+            'entertainer' => $entertainer,
+            'skills' => Skill::where('active', true)->orderBy('name')->get(),
+        ]);
     }
 
     public function store(
         StoreBookingRequestRequest $request,
-        Entertainer $entertainer,
         CreateBookingRequest $createBookingRequest,
+        ?Entertainer $entertainer = null,
     ): RedirectResponse {
-        abort_unless($entertainer->active, 404);
+        if ($entertainer !== null) {
+            abort_unless($entertainer->active, 404);
+        }
 
-        $createBookingRequest->handle([
-            ...$request->validated(),
-            'entertainer_id' => $entertainer->id,
-        ]);
+        $validated = $request->validated();
+        $requestType = $validated['request_type'];
+        unset($validated['request_type']);
+
+        if ($requestType === 'specific') {
+            abort_unless($entertainer !== null, 404);
+
+            $validated['entertainer_id'] = $entertainer->id;
+            $validated['skill_id'] ??= $entertainer->skills()->where('active', true)->value('skills.id');
+        } else {
+            $validated['entertainer_id'] = null;
+        }
+
+        $createBookingRequest->handle($validated);
 
         return redirect()->route('booking-requests.thanks');
     }

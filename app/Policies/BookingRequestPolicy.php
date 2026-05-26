@@ -19,7 +19,8 @@ class BookingRequestPolicy
 
     public function view(User $user, BookingRequest $bookingRequest): bool
     {
-        return $user->id === $bookingRequest->entertainer->user_id;
+        return $bookingRequest->entertainer?->user_id === $user->id
+            || $bookingRequest->matches()->whereHas('entertainer', fn ($query) => $query->where('user_id', $user->id))->exists();
     }
 
     public function create(User $user): bool
@@ -29,7 +30,7 @@ class BookingRequestPolicy
 
     public function update(User $user, BookingRequest $bookingRequest): bool
     {
-        return $user->id === $bookingRequest->entertainer->user_id;
+        return $bookingRequest->entertainer?->user_id === $user->id;
     }
 
     public function delete(User $user, BookingRequest $bookingRequest): bool

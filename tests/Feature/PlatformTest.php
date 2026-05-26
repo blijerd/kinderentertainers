@@ -75,8 +75,10 @@ class PlatformTest extends TestCase
     public function test_booking_request_can_be_created(): void
     {
         $entertainer = Entertainer::factory()->create(['active' => true, 'slug' => 'sanne']);
+        $entertainer->skills()->attach(Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']));
 
         $this->post(route('booking-requests.store', $entertainer), [
+            'request_type' => 'specific',
             'customer_type' => 'consument',
             'name' => 'Marieke Jansen',
             'email' => 'marieke@example.com',

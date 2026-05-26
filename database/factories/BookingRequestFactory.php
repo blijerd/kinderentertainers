@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
 use App\Models\BookingRequest;
 use App\Models\Entertainer;
+use App\Models\Skill;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,6 +18,7 @@ class BookingRequestFactory extends Factory
     {
         return [
             'entertainer_id' => Entertainer::factory(),
+            'skill_id' => Skill::factory(),
             'customer_type' => fake()->randomElement(CustomerType::cases()),
             'name' => fake()->name(),
             'company_name' => fake()->optional()->company(),

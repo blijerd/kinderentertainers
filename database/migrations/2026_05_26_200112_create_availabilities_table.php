@@ -22,6 +22,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['entertainer_id', 'date', 'status']);
+            $table->index(['entertainer_id', 'date', 'start_time', 'end_time'], 'availabilities_entertainer_datetime_index');
         });
     }
 

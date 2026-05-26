@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('booking_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('entertainer_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('entertainer_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('skill_id')->nullable()->constrained()->nullOnDelete();
             $table->string('customer_type')->index();
             $table->string('name');
             $table->string('company_name')->nullable();
@@ -34,6 +35,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['entertainer_id', 'status']);
+            $table->index(['entertainer_id', 'event_date', 'start_time', 'end_time'], 'booking_requests_entertainer_datetime_index');
         });
     }
 
