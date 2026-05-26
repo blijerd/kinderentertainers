@@ -13,6 +13,8 @@ new class extends Component
 };
 ?>
 
+@php($availableSkills = $entertainer?->skills ?? $skills)
+
 <form method="POST" action="{{ $entertainer ? route('booking-requests.store', $entertainer) : route('booking-requests.general.store') }}" class="brand-card grid gap-5 p-5 md:grid-cols-2">
     @csrf
     <fieldset class="space-y-3 md:col-span-2">
@@ -40,7 +42,7 @@ new class extends Component
         <span class="text-sm font-medium">Skill</span>
         <select name="skill_id" class="w-full rounded-md border-slate-300 text-sm">
             <option value="">Kies een skill</option>
-            @foreach ($skills as $skill)
+            @foreach ($availableSkills as $skill)
                 <option value="{{ $skill->id }}" @selected((string) old('skill_id') === (string) $skill->id || (! old('skill_id') && $entertainer?->skills->contains($skill)))>{{ $skill->name }}</option>
             @endforeach
         </select>
@@ -117,7 +119,7 @@ new class extends Component
     <fieldset class="space-y-2 md:col-span-2">
         <legend class="text-sm font-medium">Gewenste skills</legend>
         <div class="flex flex-wrap gap-2">
-            @foreach ($skills as $skill)
+            @foreach ($availableSkills as $skill)
                 <label class="rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-sm">
                     <input type="checkbox" name="desired_skills[]" value="{{ $skill->name }}" @checked(in_array($skill->name, old('desired_skills', []), true)) class="mr-1 rounded border-slate-300">
                     {{ $skill->name }}

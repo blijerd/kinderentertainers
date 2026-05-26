@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'Kinderentertainers.nl' }}</title>
-    <link rel="icon" href="{{ asset('brand/logo-mark.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ asset('brand/favicon.svg') }}" type="image/svg+xml">
+    <link rel="alternate icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen font-sans text-slate-900 antialiased">

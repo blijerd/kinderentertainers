@@ -35,6 +35,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['entertainer_id', 'status']);
+            $table->index(['skill_id', 'status']);
             $table->index(['entertainer_id', 'event_date', 'start_time', 'end_time'], 'booking_requests_entertainer_datetime_index');
         });
     }

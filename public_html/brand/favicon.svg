@@ -1,0 +1,9 @@
+<svg viewBox="0 0 64 64" role="img" aria-label="Kinderentertainers.nl favicon" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5" y="5" width="54" height="54" rx="18" fill="#0F766E"/>
+  <path d="M17 39C22.7 48.7 41.3 48.7 47 39" stroke="#FFF7ED" stroke-width="5.2" stroke-linecap="round"/>
+  <circle cx="24" cy="28" r="4" fill="#FFF7ED"/>
+  <circle cx="40" cy="28" r="4" fill="#FFF7ED"/>
+  <path d="M32 12L35.4 19L43.1 20.1L37.5 25.5L38.8 33.1L32 29.5L25.2 33.1L26.5 25.5L20.9 20.1L28.6 19L32 12Z" fill="#FBBF24"/>
+  <path d="M12.5 23.5L19.4 19.8" stroke="#FB7185" stroke-width="4" stroke-linecap="round"/>
+  <path d="M51.5 23.5L44.6 19.8" stroke="#2DD4BF" stroke-width="4" stroke-linecap="round"/>
+</svg>

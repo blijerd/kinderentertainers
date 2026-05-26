@@ -62,17 +62,23 @@ class StoreBookingRequestRequest extends FormRequest
             function (Validator $validator): void {
                 $entertainer = $this->route('entertainer');
 
-                if (! $entertainer instanceof Entertainer) {
+                if ($this->input('request_type') === 'specific' && ! $entertainer instanceof Entertainer) {
+                    $validator->errors()->add('entertainer', 'Kies een entertainer voor een gerichte aanvraag.');
+
                     return;
                 }
 
-                if (! $entertainer->active) {
+                if ($entertainer instanceof Entertainer && ! $entertainer->active) {
                     $validator->errors()->add('entertainer', 'Deze entertainer is niet actief.');
                 }
 
                 $desiredSkills = $this->input('desired_skills', []);
 
                 if (! is_array($desiredSkills) || $desiredSkills === []) {
+                    return;
+                }
+
+                if (! $entertainer instanceof Entertainer) {
                     return;
                 }
 

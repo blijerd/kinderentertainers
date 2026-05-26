@@ -1,31 +1,26 @@
-CHANGELOG
+# Changelog
 
-## [0.1.2]
+## [0.1.1]
 
 ### Added
-- Algemene aanvraagflow op basis van actieve skill naast specifieke entertainer-aanvragen.
-- `booking_request_matches` met eigen matchstatussen voor beschikbare entertainers.
-- `FindAvailableEntertainersForRequest` action voor skill-, beschikbaarheids- en conflictfiltering.
-- Filament-weergave voor aanvraagtype, gekozen skill, specifieke entertainer en gevonden matches.
-- Featuretests voor specifieke aanvragen, algemene skill-aanvragen, matching en validatie.
+- Correcte Livewire componentlocatie voor `availability-check`, `booking-request-form` en `entertainer-index`.
+- Entertainer-dashboard CRUD voor eigen profiel, skills, beschikbaarheid en tarieven.
+- Algemene aanvraagflow op basis van actieve skill met matches voor beschikbare entertainers.
+- Tests voor Livewire filters, aanvraagvalidatie, beschikbaarheidsconflicten en entertainer/admin-autorisatie.
 
 ### Changed
-- `booking_requests.entertainer_id` is nullable en `booking_requests.skill_id` is toegevoegd.
-- Beschikbaarheidscontrole sluit conflicterende optie-, in behandeling- en bevestigde aanvragen uit.
+- Beschikbaarheidslogica controleert nu overlappende optie-, bezet- en niet-beschikbaar blokken en conflicterende aanvragen.
+- Booking request validatie controleert aanvraagtype, actieve entertainer of skill, toekomstige datum, tijdsvolgorde, B2B-bedrijfsnaam en toegestane skills.
+- Filament resources hebben Nederlandse labels, extra filters en policy-gestuurde autorisatie.
+- Database-indexen en relaties zijn aangescherpt voor aanvragen, skills, beschikbaarheid en matches.
 
 ### Fixed
-- Aanvraagvalidatie vereist nu een aanvraagtype met entertainer of skill volgens dat type.
+- Foutieve componentbestanden met lightning-prefix zijn vervangen door conventionele Livewire componentviews.
+- Repository ignore-regels sluiten dependency-, environment-, macOS- en testcachebestanden uit.
 
 ## [0.1.0]
 
 ### Added
-- Nieuw Laravel 13 platform voor Kinderentertainers.nl.
+- Eerste Laravel 13 basis voor Kinderentertainers.nl.
 - Filament 5 adminpanel, Livewire frontend en entertainer-dashboard.
-- Entertainers, skills, beschikbaarheid, tarieven en boekingsaanvragen.
-- Rollen, policies, seeders, factories en basistests.
-
-### Changed
-
-### Fixed
-
-### Removed
+- Entertainers, skills, beschikbaarheid, tarieven, boekingsaanvragen, rollen, policies, seeders, factories en basistests.
