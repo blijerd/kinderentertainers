@@ -5,13 +5,16 @@ namespace Tests\Feature;
 use App\Actions\CheckEntertainerAvailability;
 use App\Enums\AvailabilityStatus;
 use App\Enums\BookingStatus;
+use App\Enums\CustomerType;
 use App\Models\Availability;
 use App\Models\BookingRequest;
 use App\Models\Entertainer;
+use App\Models\Rate;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -40,6 +43,21 @@ class PlatformTest extends TestCase
 
         $this->get(route('entertainers.index', ['skill' => 'schminker']))
             ->assertOk()
+            ->assertSee('Sanne Schminkster')
+            ->assertDontSee('Magische Milan');
+    }
+
+    public function test_livewire_entertainer_filter_works(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $goochelaar = Skill::factory()->create(['name' => 'Goochelaar', 'slug' => 'goochelaar']);
+        $match = Entertainer::factory()->create(['name' => 'Sanne Schminkster', 'active' => true]);
+        $other = Entertainer::factory()->create(['name' => 'Magische Milan', 'active' => true]);
+        $match->skills()->attach($schminker);
+        $other->skills()->attach($goochelaar);
+
+        Livewire::test('entertainer-index')
+            ->set('skill', 'schminker')
             ->assertSee('Sanne Schminkster')
             ->assertDontSee('Magische Milan');
     }

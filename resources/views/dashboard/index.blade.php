@@ -1,9 +1,9 @@
 <x-layouts.app title="Entertainer dashboard">
-    <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section class="brand-shell py-10">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-slate-950">Dashboard {{ $entertainer->name }}</h1>
-                <p class="mt-2 text-sm text-slate-600">Beheer je profiel, skills, beschikbaarheid, tarieven en aanvragen.</p>
+                <h1 class="brand-heading text-3xl">Dashboard {{ $entertainer->name }}</h1>
+                <p class="mt-2 text-sm text-slate-700">Beheer je profiel, skills, beschikbaarheid, tarieven en aanvragen.</p>
             </div>
             @if (session('status'))
                 <p class="rounded-md bg-green-50 px-4 py-3 text-sm font-medium text-green-800">{{ session('status') }}</p>
@@ -18,10 +18,10 @@
 
         <div class="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
             <div class="space-y-6">
-                <form method="POST" action="{{ route('dashboard.profile.update') }}" class="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
+                <form method="POST" action="{{ route('dashboard.profile.update') }}" class="brand-card grid gap-4 p-5 md:grid-cols-2">
                     @csrf
                     @method('PATCH')
-                    <h2 class="text-lg font-semibold md:col-span-2">Profiel</h2>
+                    <h2 class="text-lg font-bold text-brand-ink md:col-span-2">Profiel</h2>
                     <label class="space-y-1">
                         <span class="text-sm font-medium">Naam</span>
                         <input name="name" value="{{ old('name', $entertainer->name) }}" required class="w-full rounded-md border-slate-300 text-sm">
@@ -52,27 +52,27 @@
                         <textarea name="bio" rows="6" class="w-full rounded-md border-slate-300 text-sm">{{ old('bio', $entertainer->bio) }}</textarea>
                         @error('bio') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </label>
-                    <button class="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white md:col-span-2">Profiel opslaan</button>
+                    <button class="brand-button md:col-span-2">Profiel opslaan</button>
                 </form>
 
-                <form method="POST" action="{{ route('dashboard.skills.update') }}" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <form method="POST" action="{{ route('dashboard.skills.update') }}" class="brand-card p-5">
                     @csrf
                     @method('PATCH')
-                    <h2 class="text-lg font-semibold">Skills</h2>
+                    <h2 class="text-lg font-bold text-brand-ink">Skills</h2>
                     <div class="mt-4 flex flex-wrap gap-2">
                         @foreach ($skills as $skill)
-                            <label class="rounded-full border border-slate-200 px-3 py-1.5 text-sm">
+                            <label class="rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-sm">
                                 <input type="checkbox" name="skills[]" value="{{ $skill->id }}" @checked($entertainer->skills->contains($skill)) class="mr-1 rounded border-slate-300">
                                 {{ $skill->name }}
                             </label>
                         @endforeach
                     </div>
                     @error('skills') <p class="mt-2 text-sm text-red-700">{{ $message }}</p> @enderror
-                    <button class="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Skills opslaan</button>
+                    <button class="brand-button mt-4 px-4 py-2">Skills opslaan</button>
                 </form>
 
-                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                    <h2 class="text-lg font-semibold">Beschikbaarheid</h2>
+                <div class="brand-card p-5">
+                    <h2 class="text-lg font-bold text-brand-ink">Beschikbaarheid</h2>
                     <form method="POST" action="{{ route('dashboard.availabilities.store') }}" class="mt-4 grid gap-3 md:grid-cols-5">
                         @csrf
                         <input name="date" type="date" required class="rounded-md border-slate-300 text-sm" aria-label="Datum">
@@ -83,7 +83,7 @@
                                 <option value="{{ $status->value }}">{{ $status->label() }}</option>
                             @endforeach
                         </select>
-                        <button class="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Toevoegen</button>
+                        <button class="brand-button px-4 py-2">Toevoegen</button>
                     </form>
                     <div class="mt-5 divide-y divide-slate-200">
                         @forelse ($entertainer->availabilities as $availability)
@@ -98,7 +98,7 @@
                                         <option value="{{ $status->value }}" @selected($availability->status === $status)>{{ $status->label() }}</option>
                                     @endforeach
                                 </select>
-                                <button class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Opslaan</button>
+                                <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
                                 <button form="delete-availability-{{ $availability->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700">Verwijderen</button>
                             </form>
                             <form id="delete-availability-{{ $availability->id }}" method="POST" action="{{ route('dashboard.availabilities.destroy', $availability) }}" class="hidden">
@@ -113,8 +113,8 @@
             </div>
 
             <aside class="space-y-6">
-                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                    <h2 class="text-lg font-semibold">Tarieven</h2>
+                <div class="brand-card p-5">
+                    <h2 class="text-lg font-bold text-brand-ink">Tarieven</h2>
                     <form method="POST" action="{{ route('dashboard.rates.store') }}" class="mt-4 grid gap-3">
                         @csrf
                         <select name="customer_type" required class="rounded-md border-slate-300 text-sm" aria-label="Doelgroep">
@@ -130,7 +130,7 @@
                             <input type="checkbox" name="vat_included" value="1" checked class="rounded border-slate-300">
                             Btw inclusief
                         </label>
-                        <button class="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white">Tarief toevoegen</button>
+                        <button class="brand-button px-4 py-2">Tarief toevoegen</button>
                     </form>
                     <div class="mt-5 space-y-4">
                         @foreach ($entertainer->rates as $rate)
@@ -151,7 +151,7 @@
                                     Btw inclusief
                                 </label>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Opslaan</button>
+                                    <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
                                     <button form="delete-rate-{{ $rate->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700">Verwijderen</button>
                                 </div>
                             </form>
@@ -163,8 +163,8 @@
                     </div>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                    <h2 class="text-lg font-semibold">Aanvragen</h2>
+                <div class="brand-card p-5">
+                    <h2 class="text-lg font-bold text-brand-ink">Aanvragen</h2>
                     <div class="mt-4 divide-y divide-slate-200">
                         @forelse ($bookingRequests as $bookingRequest)
                             <div class="py-4">
@@ -178,7 +178,7 @@
                                         <option value="bevestigd" @selected($bookingRequest->status === \App\Enums\BookingStatus::Confirmed)>Bevestigd</option>
                                         <option value="afgewezen" @selected($bookingRequest->status === \App\Enums\BookingStatus::Rejected)>Afgewezen</option>
                                     </select>
-                                    <button class="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white">Opslaan</button>
+                                    <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
                                 </form>
                             </div>
                         @empty
