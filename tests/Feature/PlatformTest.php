@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\CheckEntertainerAvailability;
+use App\Actions\FindAvailableEntertainersForRequest;
 use App\Enums\AvailabilityStatus;
 use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
@@ -140,29 +141,165 @@ class PlatformTest extends TestCase
     public function test_booking_request_can_be_created(): void
     {
         $entertainer = Entertainer::factory()->create(['active' => true, 'slug' => 'sanne']);
-        $entertainer->skills()->attach(Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']));
+        $skill = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $entertainer->skills()->attach($skill);
 
-        $this->post(route('booking-requests.store', $entertainer), [
+        $this->post(route('booking-requests.store', $entertainer), $this->bookingRequestPayload([
             'request_type' => 'specific',
-            'customer_type' => 'consument',
-            'name' => 'Marieke Jansen',
-            'email' => 'marieke@example.com',
-            'phone' => '0612345678',
-            'event_date' => now()->addWeeks(2)->toDateString(),
-            'start_time' => '13:00',
-            'end_time' => '15:00',
-            'address' => 'Dorpsstraat 1',
-            'postal_code' => '1234 AB',
-            'city' => 'Utrecht',
-            'children_count' => 12,
-            'desired_skills' => ['Schminker'],
-            'message' => 'Graag beschikbaarheid checken.',
-        ])->assertRedirect(route('booking-requests.thanks'));
+            'skill_id' => $skill->id,
+        ]))->assertRedirect(route('booking-requests.thanks'));
 
         $this->assertDatabaseHas('booking_requests', [
             'entertainer_id' => $entertainer->id,
             'email' => 'marieke@example.com',
             'status' => BookingStatus::New->value,
+        ]);
+    }
+
+    public function test_customer_can_request_specific_schminker(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $entertainer = Entertainer::factory()->create(['active' => true, 'slug' => 'schminker-sophie']);
+        $entertainer->skills()->attach($schminker);
+
+        $this->post(route('booking-requests.store', $entertainer), $this->bookingRequestPayload([
+            'request_type' => 'specific',
+            'skill_id' => $schminker->id,
+        ]))->assertRedirect(route('booking-requests.thanks'));
+
+        $this->assertDatabaseHas('booking_requests', [
+            'entertainer_id' => $entertainer->id,
+            'skill_id' => $schminker->id,
+            'email' => 'marieke@example.com',
+        ]);
+    }
+
+    public function test_customer_can_create_general_request_for_schminker_skill(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $available = $this->availableEntertainerForSkill($schminker);
+
+        $this->post(route('booking-requests.general.store'), $this->bookingRequestPayload([
+            'request_type' => 'general',
+            'skill_id' => $schminker->id,
+        ]))->assertRedirect(route('booking-requests.thanks'));
+
+        $this->assertDatabaseHas('booking_requests', [
+            'entertainer_id' => null,
+            'skill_id' => $schminker->id,
+            'status' => BookingStatus::New->value,
+        ]);
+
+        $this->assertDatabaseHas('booking_request_matches', [
+            'entertainer_id' => $available->id,
+            'status' => 'beschikbaar',
+        ]);
+    }
+
+    public function test_available_entertainer_finder_only_returns_active_available_schminkers(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $available = $this->availableEntertainerForSkill($schminker);
+        $inactive = $this->availableEntertainerForSkill($schminker, ['active' => false]);
+
+        $matches = app(FindAvailableEntertainersForRequest::class)->handle(
+            $schminker,
+            now()->addWeeks(2)->toDateString(),
+            '13:00',
+            '15:00',
+        );
+
+        $this->assertTrue($matches->contains($available));
+        $this->assertFalse($matches->contains($inactive));
+    }
+
+    public function test_available_entertainer_finder_excludes_entertainers_without_schminker_skill(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $goochelaar = Skill::factory()->create(['name' => 'Goochelaar', 'slug' => 'goochelaar']);
+        $available = $this->availableEntertainerForSkill($schminker);
+        $other = $this->availableEntertainerForSkill($goochelaar);
+
+        $matches = app(FindAvailableEntertainersForRequest::class)->handle($schminker, now()->addWeeks(2)->toDateString(), '13:00', '15:00');
+
+        $this->assertTrue($matches->contains($available));
+        $this->assertFalse($matches->contains($other));
+    }
+
+    public function test_available_entertainer_finder_excludes_conflicting_entertainers(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $available = $this->availableEntertainerForSkill($schminker);
+        $conflicting = $this->availableEntertainerForSkill($schminker);
+
+        BookingRequest::factory()->create([
+            'entertainer_id' => $conflicting->id,
+            'skill_id' => $schminker->id,
+            'event_date' => now()->addWeeks(2)->toDateString(),
+            'start_time' => '14:00',
+            'end_time' => '16:00',
+            'status' => BookingStatus::Option,
+        ]);
+
+        $matches = app(FindAvailableEntertainersForRequest::class)->handle($schminker, now()->addWeeks(2)->toDateString(), '13:00', '15:00');
+
+        $this->assertTrue($matches->contains($available));
+        $this->assertFalse($matches->contains($conflicting));
+    }
+
+    public function test_booking_request_without_entertainer_and_without_skill_fails(): void
+    {
+        $this->post(route('booking-requests.general.store'), $this->bookingRequestPayload([
+            'request_type' => 'general',
+            'skill_id' => null,
+        ]))->assertSessionHasErrors('skill_id');
+    }
+
+    public function test_booking_request_with_skill_and_specific_entertainer_uses_chosen_request_type(): void
+    {
+        $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
+        $entertainer = Entertainer::factory()->create(['active' => true, 'slug' => 'sophie']);
+        $entertainer->skills()->attach($schminker);
+
+        $this->post(route('booking-requests.store', $entertainer), $this->bookingRequestPayload([
+            'request_type' => 'specific',
+            'skill_id' => $schminker->id,
+        ]))->assertRedirect(route('booking-requests.thanks'));
+
+        $this->assertDatabaseHas('booking_requests', [
+            'entertainer_id' => $entertainer->id,
+            'skill_id' => $schminker->id,
+        ]);
+
+        $this->post(route('booking-requests.general.store'), $this->bookingRequestPayload([
+            'request_type' => 'general',
+            'skill_id' => $schminker->id,
+            'entertainer_id' => $entertainer->id,
+        ]))->assertSessionHasErrors('entertainer_id');
+    }
+
+    public function test_booking_request_validation_rejects_invalid_input(): void
+    {
+        $entertainer = Entertainer::factory()->create(['active' => true, 'slug' => 'sanne']);
+        $entertainer->skills()->attach(Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']));
+
+        $this->post(route('booking-requests.store', $entertainer), [
+            'customer_type' => 'b2b',
+            'name' => 'Marieke Jansen',
+            'email' => 'marieke@example.com',
+            'phone' => '0612345678',
+            'event_date' => now()->subDay()->toDateString(),
+            'start_time' => '15:00',
+            'end_time' => '13:00',
+            'address' => 'Dorpsstraat 1',
+            'postal_code' => '1234 AB',
+            'city' => 'Utrecht',
+            'desired_skills' => ['Goochelaar'],
+        ])->assertSessionHasErrors([
+            'company_name',
+            'event_date',
+            'end_time',
+            'desired_skills',
         ]);
     }
 
@@ -260,5 +397,42 @@ class PlatformTest extends TestCase
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'entertainer', 'guard_name' => 'web']);
+    }
+
+    private function bookingRequestPayload(array $overrides = []): array
+    {
+        return [
+            'request_type' => 'specific',
+            'customer_type' => 'consument',
+            'name' => 'Marieke Jansen',
+            'email' => 'marieke@example.com',
+            'phone' => '0612345678',
+            'event_date' => now()->addWeeks(2)->toDateString(),
+            'start_time' => '13:00',
+            'end_time' => '15:00',
+            'address' => 'Dorpsstraat 1',
+            'postal_code' => '1234 AB',
+            'city' => 'Utrecht',
+            'children_count' => 12,
+            'desired_skills' => ['Schminker'],
+            'message' => 'Graag beschikbaarheid checken.',
+            ...$overrides,
+        ];
+    }
+
+    private function availableEntertainerForSkill(Skill $skill, array $overrides = []): Entertainer
+    {
+        $entertainer = Entertainer::factory()->create(['active' => true, ...$overrides]);
+        $entertainer->skills()->attach($skill);
+
+        Availability::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'date' => now()->addWeeks(2)->toDateString(),
+            'start_time' => '10:00',
+            'end_time' => '17:00',
+            'status' => AvailabilityStatus::Available,
+        ]);
+
+        return $entertainer;
     }
 }
