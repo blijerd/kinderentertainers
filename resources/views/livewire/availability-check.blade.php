@@ -29,13 +29,13 @@ new class extends Component
 };
 ?>
 
-<div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="text-lg font-semibold text-slate-950">Beschikbaarheid controleren</h2>
+<div class="brand-card p-5">
+    <h2 class="text-lg font-bold text-brand-ink">Beschikbaarheid controleren</h2>
     <form wire:submit="check" class="mt-4 grid gap-3 md:grid-cols-4">
         <input wire:model="date" type="date" class="rounded-md border-slate-300 text-sm" aria-label="Datum">
         <input wire:model="startTime" type="time" class="rounded-md border-slate-300 text-sm" aria-label="Starttijd">
         <input wire:model="endTime" type="time" class="rounded-md border-slate-300 text-sm" aria-label="Eindtijd">
-        <button class="rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800">Check</button>
+        <button class="brand-button px-4 py-2">Check</button>
     </form>
     @error('date') <p class="mt-2 text-sm text-red-700">{{ $message }}</p> @enderror
     @error('startTime') <p class="mt-2 text-sm text-red-700">{{ $message }}</p> @enderror

@@ -56,7 +56,7 @@ new class extends Component
 ?>
 
 <div class="space-y-8">
-    <div class="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+    <div class="brand-panel grid gap-4 p-4 md:grid-cols-4">
         <label class="space-y-1">
             <span class="text-sm font-medium text-slate-700">Skill</span>
             <select wire:model.live="skill" class="w-full rounded-md border-slate-300 text-sm">
@@ -93,24 +93,24 @@ new class extends Component
 
     <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         @forelse ($entertainers as $entertainer)
-            <a href="{{ route('entertainers.show', $entertainer) }}" class="group rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md">
+            <a href="{{ route('entertainers.show', $entertainer) }}" class="group brand-card p-5 transition hover:-translate-y-0.5 hover:border-brand-coral hover:shadow-md">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h2 class="text-xl font-semibold text-slate-950 group-hover:text-teal-700">{{ $entertainer->name }}</h2>
+                        <h2 class="text-xl font-bold text-brand-ink group-hover:text-brand-coral">{{ $entertainer->name }}</h2>
                         <p class="mt-1 text-sm text-slate-600">{{ $entertainer->city }} · {{ $entertainer->region }}</p>
                     </div>
                     @if ($entertainer->featured)
-                        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">Uitgelicht</span>
+                        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Uitgelicht</span>
                     @endif
                 </div>
                 <p class="mt-4 text-sm leading-6 text-slate-700">{{ $entertainer->short_introduction }}</p>
                 <div class="mt-4 flex flex-wrap gap-2">
                     @foreach ($entertainer->skills as $skill)
-                        <span class="rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800">{{ $skill->name }}</span>
+                        <span class="brand-pill">{{ $skill->name }}</span>
                     @endforeach
                 </div>
                 @if ($entertainer->consumerRate)
-                    <p class="mt-4 text-sm font-semibold text-slate-900">Vanaf EUR {{ number_format($entertainer->consumerRate->starting_rate_cents / 100, 2, ',', '.') }}</p>
+                    <p class="mt-4 text-sm font-bold text-brand-ink">Vanaf EUR {{ number_format($entertainer->consumerRate->starting_rate_cents / 100, 2, ',', '.') }}</p>
                 @endif
             </a>
         @empty

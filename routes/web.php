@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\BookingRequestController;
 use App\Http\Controllers\EntertainerController;
 use App\Http\Controllers\EntertainerDashboardController;
+use App\Http\Controllers\SetupController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('home'))->name('home');
@@ -19,6 +20,9 @@ Route::get('/aanvraag-bedankt', [BookingRequestController::class, 'thanks'])->na
 Route::get('/login', [AuthenticatedSessionController::class, 'create'])->middleware('guest')->name('login');
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('guest');
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::get('/setup', [SetupController::class, 'create'])->name('setup');
+Route::post('/setup', [SetupController::class, 'store'])->name('setup.store');
 
 Route::middleware('auth')->prefix('dashboard')->group(function (): void {
     Route::get('/', [EntertainerDashboardController::class, 'index'])->name('dashboard');

@@ -13,21 +13,21 @@ new class extends Component
 };
 ?>
 
-<form method="POST" action="{{ $entertainer ? route('booking-requests.store', $entertainer) : route('booking-requests.general.store') }}" class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-2">
+<form method="POST" action="{{ $entertainer ? route('booking-requests.store', $entertainer) : route('booking-requests.general.store') }}" class="brand-card grid gap-5 p-5 md:grid-cols-2">
     @csrf
     <fieldset class="space-y-3 md:col-span-2">
         <legend class="text-sm font-medium">Aanvraagtype</legend>
         <div class="grid gap-3 md:grid-cols-2">
-            <label class="rounded-md border border-slate-200 p-4 text-sm">
-                <input type="radio" name="request_type" value="specific" @checked(old('request_type', $entertainer ? 'specific' : 'general') === 'specific') @disabled(! $entertainer) class="mr-2 border-slate-300 text-teal-700">
+            <label class="rounded-md border border-teal-100 bg-teal-50/50 p-4 text-sm">
+                <input type="radio" name="request_type" value="specific" @checked(old('request_type', $entertainer ? 'specific' : 'general') === 'specific') @disabled(! $entertainer) class="mr-2 border-slate-300 text-brand-teal">
                 Ik wil een specifieke entertainer aanvragen
             </label>
-            <label class="rounded-md border border-slate-200 p-4 text-sm">
-                <input type="radio" name="request_type" value="general" @checked(old('request_type', $entertainer ? 'specific' : 'general') === 'general') class="mr-2 border-slate-300 text-teal-700">
+            <label class="rounded-md border border-amber-100 bg-amber-50/60 p-4 text-sm">
+                <input type="radio" name="request_type" value="general" @checked(old('request_type', $entertainer ? 'specific' : 'general') === 'general') class="mr-2 border-slate-300 text-brand-teal">
                 Zoek beschikbare entertainers voor deze skill
             </label>
         </div>
-        <p class="rounded-md bg-teal-50 p-3 text-sm text-teal-900">
+        <p class="rounded-md bg-teal-50 p-3 text-sm font-medium text-teal-900">
             @if ($entertainer)
                 Je vraagt beschikbaarheid aan bij deze specifieke entertainer.
             @else
@@ -118,7 +118,7 @@ new class extends Component
         <legend class="text-sm font-medium">Gewenste skills</legend>
         <div class="flex flex-wrap gap-2">
             @foreach ($skills as $skill)
-                <label class="rounded-full border border-slate-200 px-3 py-1.5 text-sm">
+                <label class="rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-sm">
                     <input type="checkbox" name="desired_skills[]" value="{{ $skill->name }}" @checked(in_array($skill->name, old('desired_skills', []), true)) class="mr-1 rounded border-slate-300">
                     {{ $skill->name }}
                 </label>
@@ -136,5 +136,5 @@ new class extends Component
             Controleer de gemarkeerde velden en probeer opnieuw.
         </div>
     @endif
-    <button class="rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800 md:col-span-2">Aanvraag verzenden</button>
+    <button class="brand-button md:col-span-2">Aanvraag verzenden</button>
 </form>
