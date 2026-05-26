@@ -1,10 +1,13 @@
 # Kinderentertainers.nl
 
+Versie: `0.1.2`
+
 Professioneel boekingsplatform voor kinderentertainers. Bezoekers zoeken entertainers op skill, regio en beschikbaarheid en leggen een aanvraag vast. Entertainers beheren hun profiel, skills, beschikbaarheid, tarieven en aanvragen.
 
 ## Features
 
 - Publieke homepage, entertainer-overzicht, detailpagina, beschikbaarheidscheck, aanvraagformulier en bedankpagina.
+- Aanvraagflow voor specifieke entertainers en algemene skill-aanvragen met automatische matches.
 - Rollen: `admin`, `entertainer` en voorbereid `klant`.
 - Adminpanel met Filament 5 resources voor gebruikers, entertainers, skills, beschikbaarheid, tarieven en aanvragen.
 - Entertainer-dashboard voor eigen profielcontext en aanvraagstatussen.
@@ -37,6 +40,13 @@ Daarna:
 
 ```bash
 php artisan migrate:fresh --seed
+```
+
+Voor bestaande installaties:
+
+```bash
+php artisan migrate
+php artisan db:seed
 ```
 
 Demo-logins:
