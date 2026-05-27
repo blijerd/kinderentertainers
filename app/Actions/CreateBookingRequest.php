@@ -7,11 +7,18 @@ use App\Enums\BookingRequestMatchStatus;
 use App\Models\BookingRequestMatch;
 use App\Models\BookingRequest;
 use App\Models\Skill;
+use App\Services\MatchScoreService;
+use App\Services\PriceIndicationService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CreateBookingRequest
 {
-    public function __construct(private readonly FindAvailableEntertainersForRequest $findAvailableEntertainers)
+    public function __construct(
+        private readonly FindAvailableEntertainersForRequest $findAvailableEntertainers,
+        private readonly PriceIndicationService $priceIndicationService,
+        private readonly MatchScoreService $matchScoreService,
+    )
     {
     }
 
@@ -21,6 +28,15 @@ class CreateBookingRequest
     public function handle(array $data): BookingRequest
     {
         $data['status'] ??= BookingStatus::New;
+        $data['customer_selection_token'] ??= Str::random(40);
+        $priceIndication = $this->priceIndicationService->estimate($data);
+
+        if ($priceIndication) {
+            $data['price_indication_min_cents'] = $priceIndication['min_cents'];
+            $data['price_indication_max_cents'] = $priceIndication['max_cents'];
+            $data['price_indication_currency'] = $priceIndication['currency'];
+            $data['price_indication_breakdown'] = $priceIndication['breakdown'];
+        }
 
         return DB::transaction(function () use ($data): BookingRequest {
             $bookingRequest = BookingRequest::create($data);
@@ -32,14 +48,27 @@ class CreateBookingRequest
                     $bookingRequest->event_date->toDateString(),
                     $bookingRequest->start_time->format('H:i'),
                     $bookingRequest->end_time->format('H:i'),
+                    $bookingRequest->event_region,
                 );
 
-                $matches->each(fn ($entertainer) => BookingRequestMatch::create([
-                    'booking_request_id' => $bookingRequest->id,
-                    'entertainer_id' => $entertainer->id,
-                    'status' => BookingRequestMatchStatus::Available,
-                    'matched_at' => now(),
-                ]));
+                $matches
+                    ->map(function ($entertainer) use ($bookingRequest): array {
+                        $score = $this->matchScoreService->score($entertainer, $bookingRequest);
+
+                        return [$entertainer, $score];
+                    })
+                    ->filter(fn (array $match): bool => $this->matchScoreService->isInsideWorkingArea($match[0], $match[1]['distance_km']))
+                    ->sortByDesc(fn (array $match): int => $match[1]['score'])
+                    ->each(fn (array $match) => BookingRequestMatch::create([
+                        'booking_request_id' => $bookingRequest->id,
+                        'entertainer_id' => $match[0]->id,
+                        'status' => BookingRequestMatchStatus::Available,
+                        'match_score' => $match[1]['score'],
+                        'distance_km' => $match[1]['distance_km'],
+                        'travel_minutes' => $match[1]['travel_minutes'],
+                        'score_breakdown' => $match[1]['breakdown'],
+                        'matched_at' => now(),
+                    ]));
             }
 
             return $bookingRequest;

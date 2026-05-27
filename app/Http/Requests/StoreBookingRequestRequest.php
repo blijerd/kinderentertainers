@@ -35,7 +35,7 @@ class StoreBookingRequestRequest extends FormRequest
             'entertainer_id' => [
                 'nullable',
                 'prohibited_if:request_type,general',
-                Rule::exists('entertainers', 'id')->where('active', true),
+                'prohibited_if:request_type,specific',
             ],
             'customer_type' => ['required', 'in:consument,b2b'],
             'name' => ['required', 'string', 'max:255'],
@@ -48,10 +48,15 @@ class StoreBookingRequestRequest extends FormRequest
             'address' => ['required', 'string', 'max:255'],
             'postal_code' => ['required', 'string', 'max:16'],
             'city' => ['required', 'string', 'max:255'],
+            'event_region' => ['nullable', 'string', 'max:255'],
+            'travel_time_minutes' => ['nullable', 'integer', 'min:0', 'max:480'],
             'children_count' => ['nullable', 'integer', 'min:0', 'max:999'],
             'children_ages' => ['nullable', 'string', 'max:255'],
             'desired_skills' => ['nullable', 'array'],
             'desired_skills.*' => ['string', 'max:255'],
+            'selected_package' => ['nullable', 'string', 'max:255'],
+            'selected_extras' => ['nullable', 'array'],
+            'selected_extras.*' => ['string', 'max:255'],
             'message' => ['nullable', 'string', 'max:5000'],
         ];
     }
@@ -68,8 +73,25 @@ class StoreBookingRequestRequest extends FormRequest
                     return;
                 }
 
+                if ($this->input('request_type') === 'general' && $entertainer instanceof Entertainer) {
+                    $validator->errors()->add('request_type', 'Een algemene aanvraag loopt via het algemene aanvraagformulier.');
+                }
+
                 if ($entertainer instanceof Entertainer && ! $entertainer->active) {
                     $validator->errors()->add('entertainer', 'Deze entertainer is niet actief.');
+                }
+
+                $skillId = $this->integer('skill_id') ?: null;
+
+                if ($this->input('request_type') === 'specific' && $skillId !== null && $entertainer instanceof Entertainer) {
+                    $hasSkill = $entertainer->skills()
+                        ->whereKey($skillId)
+                        ->where('skills.active', true)
+                        ->exists();
+
+                    if (! $hasSkill) {
+                        $validator->errors()->add('skill_id', 'Kies alleen een actieve skill die bij deze entertainer hoort.');
+                    }
                 }
 
                 $desiredSkills = $this->input('desired_skills', []);
@@ -101,9 +123,13 @@ class StoreBookingRequestRequest extends FormRequest
             'entertainer_id' => 'entertainer',
             'company_name' => 'bedrijfsnaam',
             'event_date' => 'evenementdatum',
+            'event_region' => 'regio',
+            'travel_time_minutes' => 'reistijd',
             'children_count' => 'aantal kinderen',
             'children_ages' => 'leeftijden',
             'desired_skills' => 'gewenste skills',
+            'selected_package' => 'pakket',
+            'selected_extras' => 'extras',
             'end_time' => 'eindtijd',
             'start_time' => 'starttijd',
         ];

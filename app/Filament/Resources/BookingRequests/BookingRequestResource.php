@@ -5,6 +5,7 @@ namespace App\Filament\Resources\BookingRequests;
 use App\Filament\Resources\BookingRequests\Pages\CreateBookingRequest;
 use App\Filament\Resources\BookingRequests\Pages\EditBookingRequest;
 use App\Filament\Resources\BookingRequests\Pages\ListBookingRequests;
+use App\Filament\Resources\BookingRequests\RelationManagers\EventsRelationManager;
 use App\Filament\Resources\BookingRequests\RelationManagers\MatchesRelationManager;
 use App\Filament\Resources\BookingRequests\Schemas\BookingRequestForm;
 use App\Filament\Resources\BookingRequests\Tables\BookingRequestsTable;
@@ -40,6 +41,7 @@ class BookingRequestResource extends Resource
     public static function getRelations(): array
     {
         return [
+            EventsRelationManager::class,
             MatchesRelationManager::class,
         ];
     }

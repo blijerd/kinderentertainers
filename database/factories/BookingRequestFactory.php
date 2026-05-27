@@ -30,12 +30,19 @@ class BookingRequestFactory extends Factory
             'address' => fake()->streetAddress(),
             'postal_code' => fake()->postcode(),
             'city' => fake()->city(),
+            'event_region' => fake()->randomElement(['Noord-Holland', 'Zuid-Holland', 'Utrecht', 'Noord-Brabant', 'Gelderland']),
+            'travel_time_minutes' => fake()->randomElement([15, 30, 45, 60]),
             'children_count' => fake()->numberBetween(8, 35),
             'children_ages' => fake()->randomElement(['4-6 jaar', '6-8 jaar', '8-10 jaar']),
             'desired_skills' => ['Schminker'],
+            'selected_package' => fake()->optional()->randomElement(['Basisfeest', 'Middagpakket']),
+            'selected_extras' => fake()->optional()->randomElements(['Glittertattoos', 'Ballonfiguur'], 1),
             'message' => fake()->paragraph(),
             'status' => fake()->randomElement(BookingStatus::cases()),
             'internal_note' => fake()->optional()->sentence(),
+            'customer_message' => fake()->optional()->sentence(),
+            'payment_status' => 'open',
+            'paid_cents' => 0,
         ];
     }
 }

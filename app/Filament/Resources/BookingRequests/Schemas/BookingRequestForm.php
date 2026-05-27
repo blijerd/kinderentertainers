@@ -18,6 +18,7 @@ class BookingRequestForm
     {
         return $schema->components([
             Select::make('entertainer_id')->label('Specifieke entertainer')->relationship('entertainer', 'name')->searchable()->nullable(),
+            Select::make('customer_id')->label('Klantaccount')->relationship('customer', 'email')->searchable()->nullable(),
             Select::make('skill_id')->label('Gekozen skill')->relationship('skill', 'name')->searchable()->nullable(),
             Select::make('customer_type')->label('Klanttype')->options(collect(CustomerType::cases())->mapWithKeys(fn ($type) => [$type->value => $type->label()]))->required(),
             TextInput::make('name')->label('Naam')->required(),
@@ -30,11 +31,16 @@ class BookingRequestForm
             TextInput::make('address')->label('Adres')->required(),
             TextInput::make('postal_code')->label('Postcode')->required(),
             TextInput::make('city')->label('Plaats')->required(),
+            TextInput::make('event_region')->label('Regio'),
+            TextInput::make('travel_time_minutes')->label('Reistijd enkele reis in minuten')->numeric(),
             TextInput::make('children_count')->label('Aantal kinderen')->numeric(),
             TextInput::make('children_ages')->label('Leeftijd kinderen'),
             Select::make('desired_skills')->label('Gewenste skills')->options(fn (): array => Skill::query()->orderBy('name')->pluck('name', 'name')->all())->multiple()->preload(),
             Select::make('status')->label('Status')->options(collect(BookingStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()]))->required(),
+            TextInput::make('price_indication_min_cents')->label('Prijsindicatie vanaf in centen')->numeric(),
+            TextInput::make('price_indication_max_cents')->label('Prijsindicatie tot in centen')->numeric(),
             Textarea::make('message')->label('Bericht')->columnSpanFull(),
+            Textarea::make('customer_message')->label('Klantbericht')->columnSpanFull(),
             Textarea::make('internal_note')->label('Interne notitie')->columnSpanFull(),
         ]);
     }

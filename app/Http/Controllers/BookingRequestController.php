@@ -46,6 +46,10 @@ class BookingRequestController extends Controller
             $validated['entertainer_id'] = null;
         }
 
+        if ($request->user()?->hasRole('klant')) {
+            $validated['customer_id'] = $request->user()->id;
+        }
+
         $createBookingRequest->handle($validated);
 
         return redirect()->route('booking-requests.thanks');

@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
@@ -8,21 +10,29 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-    --color-brand-ink: #102a43;
-    --color-brand-teal: #0f766e;
-    --color-brand-teal-dark: #115e59;
-    --color-brand-mint: #a7f3d0;
-    --color-brand-sun: #fbbf24;
-    --color-brand-coral: #e05263;
-    --color-brand-peach: #fff7ed;
-    --color-brand-cloud: #f8fafc;
+    --color-brand-ink: #07142f;
+    --color-brand-teal: #6d35d8;
+    --color-brand-teal-dark: #4b1fa8;
+    --color-brand-mint: #f8f2ff;
+    --color-brand-sun: #ffc34d;
+    --color-brand-coral: #ff5d6c;
+    --color-brand-peach: #fff4e1;
+    --color-brand-cloud: #f8f7ff;
 }
 
 @layer base {
     body {
         background:
-            radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 28rem),
-            linear-gradient(180deg, #fff7ed 0%, #f8fafc 30rem);
+            radial-gradient(circle at 12% 4%, rgba(255, 195, 77, 0.18), transparent 26rem),
+            radial-gradient(circle at 88% 10%, rgba(109, 53, 216, 0.14), transparent 24rem),
+            linear-gradient(180deg, #fff8ec 0%, #f8f7ff 34rem);
+    }
+
+    .dark body {
+        background:
+            radial-gradient(circle at 16% 2%, rgba(255, 93, 108, 0.20), transparent 24rem),
+            radial-gradient(circle at 82% 10%, rgba(109, 53, 216, 0.32), transparent 26rem),
+            linear-gradient(180deg, #050b1f 0%, #101326 34rem);
     }
 
     input,
@@ -32,11 +42,19 @@
         background-color: #ffffff;
     }
 
+    .dark input,
+    .dark select,
+    .dark textarea {
+        border-color: #475569;
+        background-color: #0f172a;
+        color: #f8fafc;
+    }
+
     input:focus,
     select:focus,
     textarea:focus {
-        border-color: #0f766e;
-        box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.22);
+        border-color: #6d35d8;
+        box-shadow: 0 0 0 3px rgba(109, 53, 216, 0.20);
         outline: none;
     }
 }
@@ -47,11 +65,11 @@
     }
 
     .brand-card {
-        @apply rounded-lg border border-slate-200/80 bg-white shadow-sm;
+        @apply rounded-lg border border-violet-100/80 bg-white shadow-sm shadow-violet-950/5 dark:border-slate-700 dark:bg-slate-900;
     }
 
     .brand-panel {
-        @apply rounded-lg border border-teal-100 bg-white/90 shadow-sm shadow-teal-900/5;
+        @apply rounded-lg border border-violet-100 bg-white/90 shadow-sm shadow-violet-950/10 dark:border-slate-700 dark:bg-slate-900/90;
     }
 
     .brand-kicker {
@@ -59,18 +77,62 @@
     }
 
     .brand-heading {
-        @apply font-black tracking-tight text-brand-ink;
+        @apply font-black tracking-tight text-brand-ink dark:text-white;
     }
 
     .brand-button {
-        @apply inline-flex items-center justify-center rounded-md bg-brand-teal px-5 py-3 text-sm font-bold text-white shadow-sm shadow-teal-900/15 transition hover:bg-brand-teal-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal;
+        @apply inline-flex items-center justify-center rounded-md bg-brand-teal px-5 py-3 text-sm font-bold text-white shadow-sm shadow-violet-950/20 transition hover:bg-brand-teal-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal;
     }
 
     .brand-button-secondary {
-        @apply inline-flex items-center justify-center rounded-md border border-teal-200 bg-white px-5 py-3 text-sm font-bold text-brand-ink transition hover:border-brand-coral hover:text-brand-coral;
+        @apply inline-flex items-center justify-center rounded-md border border-violet-200 bg-white px-5 py-3 text-sm font-bold text-brand-ink transition hover:border-brand-coral hover:text-brand-coral dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100;
     }
 
     .brand-pill {
-        @apply rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-brand-teal;
+        @apply rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-brand-teal;
+    }
+
+    .dashboard-tab {
+        @apply rounded-md border border-violet-100 bg-white px-4 py-2 text-sm font-bold text-brand-ink transition hover:border-brand-coral hover:text-brand-coral dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+    }
+
+    .dashboard-tab[aria-pressed="true"] {
+        @apply border-brand-teal bg-brand-teal text-white hover:border-brand-teal hover:text-white;
+    }
+
+    .preference-modal {
+        @apply fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4;
+    }
+
+    .preference-modal__panel {
+        @apply w-full max-w-lg rounded-lg border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-900;
+    }
+
+    .preference-choice {
+        @apply flex items-center justify-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700;
+    }
+
+    .legal-content {
+        @apply text-slate-700 dark:text-slate-200;
+    }
+
+    .legal-content h1,
+    .legal-content h2,
+    .legal-content h3 {
+        @apply mt-6 font-bold text-brand-ink first:mt-0 dark:text-white;
+    }
+
+    .legal-content h1 {
+        @apply text-3xl;
+    }
+
+    .legal-content h2 {
+        @apply text-2xl;
+    }
+
+    .legal-content p,
+    .legal-content ul,
+    .legal-content ol {
+        @apply mt-4 leading-7;
     }
 }

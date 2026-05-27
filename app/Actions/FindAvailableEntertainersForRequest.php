@@ -23,7 +23,7 @@ class FindAvailableEntertainersForRequest
             ->whereHas('skills', fn ($query) => $query
                 ->whereKey($skill->id)
                 ->where('skills.active', true))
-            ->when($region, fn ($query) => $query->where('region', $region))
+            ->when($region, fn ($query) => $query->orderByRaw('case when region = ? then 0 else 1 end', [$region]))
             ->orderByDesc('featured')
             ->orderBy('name')
             ->get()

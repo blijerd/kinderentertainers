@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.2]
+
+### Added
+- Entertainer-dashboard voor eigen algemene aanvraagmatches met accepteren en afwijzen.
+- Extra tests voor specifieke en algemene Schminker-aanvragen, matchfiltering, conflicten, eigen matchtoegang en adminzicht.
+- README-installatiestappen en expliciete PHP-extensievereisten.
+
+### Changed
+- Booking request validatie vertrouwt bij specifieke aanvragen alleen de route-entertainer en blokkeert `entertainer_id` uit de request payload.
+- Algemene matching negeert regio/werkgebied voorlopig als harde blokkade en controleert ook conflicten via bestaande algemene aanvraagmatches.
+- Filament aanvraagresource toont aanvraagtype, skill, specifieke entertainer, matchaantal en matchstatussen met filters voor status, type, skill, datum en match-entertainer.
+
+### Fixed
+- Skillselectie in specifieke aanvraagformulieren selecteert niet langer meerdere opties tegelijk.
+- Algemene aanvraagmatches zetten de aanvraag op `optie` wanneer een entertainer de match accepteert.
+
 ## [0.1.1]
 
 ### Added

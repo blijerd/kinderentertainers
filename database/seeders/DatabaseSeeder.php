@@ -53,6 +53,13 @@ class DatabaseSeeder extends Seeder
         ]);
         $admin->assignRole('admin');
 
+        $customer = User::factory()->create([
+            'name' => 'Marieke Jansen',
+            'email' => 'klant@kinderentertainers.nl',
+            'password' => Hash::make('password'),
+        ]);
+        $customer->assignRole('klant');
+
         $demoEntertainers = [
             ['name' => 'Sanne Schminkster', 'city' => 'Amsterdam', 'region' => 'Noord-Holland', 'skills' => ['Schminker', 'Glittertattoo artiest']],
             ['name' => 'DJ Daan Kids', 'city' => 'Rotterdam', 'region' => 'Zuid-Holland', 'skills' => ['Kinder-DJ', 'Spelletjesbegeleider']],
@@ -97,8 +104,11 @@ class DatabaseSeeder extends Seeder
 
             BookingRequest::factory()->count(2)->create([
                 'entertainer_id' => $entertainer->id,
+                'customer_id' => $index === 0 ? $customer->id : null,
+                'email' => $index === 0 ? $customer->email : fake()->safeEmail(),
                 'status' => BookingStatus::New,
                 'desired_skills' => $demo['skills'],
+                'customer_message' => $index === 0 ? 'We hebben je aanvraag ontvangen en nemen contact met je op.' : null,
             ]);
         }
     }

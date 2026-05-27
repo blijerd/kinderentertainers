@@ -1,8 +1,10 @@
 *.log
 .DS_Store
+__MACOSX/
+.git/
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -13,6 +15,7 @@
 /.vscode
 /.zed
 /auth.json
+/database/database.sqlite
 /node_modules
 /public_html/build
 /public_html/fonts-manifest.dev.json

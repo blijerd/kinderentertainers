@@ -16,7 +16,12 @@ class EntertainerController extends Controller
     {
         abort_unless($entertainer->active, 404);
 
-        $entertainer->load(['skills', 'rates', 'availabilities' => fn ($query) => $query->upcoming()->orderBy('date')]);
+        $entertainer->load([
+            'skills',
+            'rates',
+            'approvedReviews' => fn ($query) => $query->latest('published_at'),
+            'availabilities' => fn ($query) => $query->upcoming()->orderBy('date'),
+        ]);
 
         return view('entertainers.show', compact('entertainer'));
     }

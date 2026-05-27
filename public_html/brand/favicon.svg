@@ -1,9 +1,15 @@
 <svg viewBox="0 0 64 64" role="img" aria-label="Kinderentertainers.nl favicon" xmlns="http://www.w3.org/2000/svg">
-  <rect x="5" y="5" width="54" height="54" rx="18" fill="#0F766E"/>
-  <path d="M17 39C22.7 48.7 41.3 48.7 47 39" stroke="#FFF7ED" stroke-width="5.2" stroke-linecap="round"/>
-  <circle cx="24" cy="28" r="4" fill="#FFF7ED"/>
-  <circle cx="40" cy="28" r="4" fill="#FFF7ED"/>
-  <path d="M32 12L35.4 19L43.1 20.1L37.5 25.5L38.8 33.1L32 29.5L25.2 33.1L26.5 25.5L20.9 20.1L28.6 19L32 12Z" fill="#FBBF24"/>
-  <path d="M12.5 23.5L19.4 19.8" stroke="#FB7185" stroke-width="4" stroke-linecap="round"/>
-  <path d="M51.5 23.5L44.6 19.8" stroke="#2DD4BF" stroke-width="4" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="ke-favicon-bg" x1="8" x2="56" y1="8" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8C49F5"/>
+      <stop offset="1" stop-color="#4B1FA8"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="16" fill="url(#ke-favicon-bg)"/>
+  <path d="M13.5 41.5C21.2 50 42.8 50 50.5 41.5" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M19 39L26 31L32 43L39 25L45 39" fill="none" stroke="#FFFFFF" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="24" cy="28" r="4.1" fill="#FFFFFF"/>
+  <circle cx="40" cy="28" r="4.1" fill="#FFFFFF"/>
+  <circle cx="32" cy="18" r="3.7" fill="#FFFFFF"/>
+  <path d="M48 12L50 16.4L54.5 18.4L50 20.4L48 24.8L46 20.4L41.5 18.4L46 16.4L48 12Z" fill="#FFFFFF"/>
 </svg>

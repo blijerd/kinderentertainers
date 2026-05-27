@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\AdminSignalListWidget;
+use App\Filament\Widgets\AdminSignalStatsWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -29,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->colors([
-                'primary' => Color::Teal,
+                'primary' => Color::Violet,
                 'warning' => Color::Amber,
                 'danger' => Color::Rose,
             ])
@@ -40,6 +42,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
+                AdminSignalStatsWidget::class,
+                AdminSignalListWidget::class,
                 AccountWidget::class,
                 FilamentInfoWidget::class,
             ])
