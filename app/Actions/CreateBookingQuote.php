@@ -12,9 +12,7 @@ use RuntimeException;
 
 class CreateBookingQuote
 {
-    public function __construct(private readonly LegalDocumentRepository $legalDocuments)
-    {
-    }
+    public function __construct(private readonly LegalDocumentRepository $legalDocuments) {}
 
     public function handle(BookingRequest $bookingRequest, float $travelDistanceKm = 0.0, int $validDays = 14): BookingRequest
     {
@@ -30,9 +28,18 @@ class CreateBookingQuote
         $durationHours = $this->durationHours($bookingRequest);
         $billableHours = max($durationHours, (float) $rate->minimum_hours);
         $performanceCents = $rate->starting_rate_cents + (int) round($billableHours * $rate->hourly_rate_cents);
-        $travelCents = (int) round(max(0, $travelDistanceKm) * $rate->travel_cost_cents_per_km);
+        $entertainer = $bookingRequest->entertainer;
+        $maxTravelDistanceKm = $entertainer?->max_travel_distance_km ?: $entertainer?->working_radius_km;
+        $travelDistanceKm = max(0, $travelDistanceKm);
+
+        if ($maxTravelDistanceKm !== null && $travelDistanceKm > $maxTravelDistanceKm) {
+            throw new RuntimeException('De reisafstand valt buiten je maximale reisafstand.');
+        }
+
+        $billableTravelKm = max(0, $travelDistanceKm - (int) ($entertainer?->travel_free_km ?? 0));
+        $travelCents = (int) round($billableTravelKm * $rate->travel_cost_cents_per_km);
         $totalCents = $performanceCents + $travelCents;
-        $depositPercentage = (int) ($bookingRequest->entertainer?->deposit_percentage ?? 0);
+        $depositPercentage = (int) ($entertainer?->deposit_percentage ?? 0);
         $terms = $this->legalDocuments->currentVersion(LegalDocumentType::Terms);
 
         $bookingRequest->update([
@@ -43,7 +50,15 @@ class CreateBookingQuote
             'deposit_cents' => $depositPercentage > 0 ? (int) round($totalCents * ($depositPercentage / 100)) : null,
             'payment_status' => 'open',
             'payment_due_at' => now()->addDays($validDays)->endOfDay(),
-            'quote_travel_distance_km' => max(0, $travelDistanceKm),
+            'invoice_status' => 'not_started',
+            'invoice_provider' => null,
+            'invoice_reference' => null,
+            'invoice_url' => null,
+            'payment_provider' => null,
+            'payment_checkout_url' => null,
+            'cash_payment_allowed' => false,
+            'payment_instruction_sent_at' => null,
+            'quote_travel_distance_km' => $travelDistanceKm,
             'quote_valid_until' => now()->addDays($validDays)->endOfDay(),
             'quote_sent_at' => now(),
             'quote_accepted_at' => null,

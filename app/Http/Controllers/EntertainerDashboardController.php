@@ -10,6 +10,7 @@ use App\Enums\BookingRequestMatchStatus;
 use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
 use App\Enums\IntegrationProvider;
+use App\Enums\PaymentProvider;
 use App\Models\Availability;
 use App\Models\AvailabilityRule;
 use App\Models\BookingRequest;
@@ -18,12 +19,14 @@ use App\Models\Entertainer;
 use App\Models\EntertainerIntegration;
 use App\Models\Rate;
 use App\Models\Skill;
+use App\Services\IntegrationHealthService;
+use App\Services\Integrations\CalendarIntegrationService;
 use App\Services\ProfileQualityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class EntertainerDashboardController extends Controller
@@ -99,6 +102,8 @@ class EntertainerDashboardController extends Controller
             'city' => ['required', 'string', 'max:255'],
             'region' => ['required', 'string', 'max:255'],
             'working_radius_km' => ['required', 'integer', 'min:1', 'max:500'],
+            'travel_free_km' => ['required', 'integer', 'min:0', 'max:500'],
+            'max_travel_distance_km' => ['nullable', 'integer', 'min:1', 'max:500'],
             'profile_photo' => ['nullable', 'image', 'max:5120'],
             'gallery_photos' => ['nullable', 'array', 'max:12'],
             'gallery_photos.*' => ['image', 'max:5120'],
@@ -115,6 +120,8 @@ class EntertainerDashboardController extends Controller
             'practical_requirements' => 'praktische eisen',
             'cancellation_policy' => 'annuleringsvoorwaarden',
             'deposit_percentage' => 'aanbetalingspercentage',
+            'travel_free_km' => 'vrije reiskilometers',
+            'max_travel_distance_km' => 'maximale reisafstand',
             'profile_photo' => 'profielfoto',
             'gallery_photos' => 'galerijfoto\'s',
         ]);
@@ -168,6 +175,31 @@ class EntertainerDashboardController extends Controller
         return back()->with('status', 'Profiel bijgewerkt.');
     }
 
+    public function requestPublication(Request $request, ProfileQualityService $profileQualityService): RedirectResponse
+    {
+        $entertainer = $this->currentEntertainer($request);
+
+        $this->authorize('update', $entertainer);
+
+        $score = $profileQualityService->score($entertainer);
+
+        if ($score < 70) {
+            throw ValidationException::withMessages([
+                'publication' => 'Vul je profiel verder aan voordat je publicatie aanvraagt.',
+            ]);
+        }
+
+        $entertainer->update([
+            'profile_complete' => true,
+            'profile_quality_score' => $score,
+            'publication_requested_at' => now(),
+            'publication_reviewed_at' => null,
+            'publication_review_note' => null,
+        ]);
+
+        return back()->with('status', 'Publicatie aangevraagd. Een beheerder controleert je profiel.');
+    }
+
     private function linesToArray(string $value): array
     {
         return collect(preg_split('/\r\n|\r|\n/', $value))
@@ -204,17 +236,25 @@ class EntertainerDashboardController extends Controller
         $validated = $request->validate([
             'accounting_provider' => ['required', Rule::enum(AccountingProvider::class)],
             'accounting_notes' => ['nullable', 'string', 'max:5000'],
+            'payment_provider' => ['required', Rule::enum(PaymentProvider::class)],
+            'cash_payment_enabled' => ['nullable', 'boolean'],
+            'payment_notes' => ['nullable', 'string', 'max:5000'],
         ], attributes: [
             'accounting_provider' => 'boekhoudpakket',
             'accounting_notes' => 'facturatienotities',
+            'payment_provider' => 'betaalprovider',
+            'cash_payment_enabled' => 'contant betalen',
+            'payment_notes' => 'betaalnotities',
         ]);
+
+        $validated['cash_payment_enabled'] = $request->boolean('cash_payment_enabled');
 
         $entertainer->update($validated);
 
         return back()->with('status', 'Facturatie-instellingen bijgewerkt.');
     }
 
-    public function updateIntegration(Request $request, EntertainerIntegration $integration): RedirectResponse
+    public function updateIntegration(Request $request, EntertainerIntegration $integration, IntegrationHealthService $health): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
@@ -224,6 +264,12 @@ class EntertainerDashboardController extends Controller
         $validated = $this->validateIntegration($request, $integration);
 
         $integration->update($validated);
+        $check = $health->check($integration->refresh());
+        $integration->update([
+            'last_checked_at' => now(),
+            'last_check_status' => $check['status'],
+            'last_check_message' => $check['message'],
+        ]);
 
         return back()->with('status', $integration->provider->label().' bijgewerkt.');
     }
@@ -339,7 +385,7 @@ class EntertainerDashboardController extends Controller
         return back()->with('status', 'Tarief verwijderd.');
     }
 
-    public function updateBookingStatus(Request $request, BookingRequest $bookingRequest): RedirectResponse
+    public function updateBookingStatus(Request $request, BookingRequest $bookingRequest, CalendarIntegrationService $calendar): RedirectResponse
     {
         $this->authorize('update', $bookingRequest);
 
@@ -359,6 +405,14 @@ class EntertainerDashboardController extends Controller
         }
 
         $bookingRequest->update($data);
+
+        if ($data['status'] === BookingStatus::Cancelled) {
+            try {
+                $calendar->syncBooking($bookingRequest->refresh());
+            } catch (\RuntimeException) {
+                // Scheduled sync will retry and expose the failure in the admin signals.
+            }
+        }
 
         return back()->with('status', 'Aanvraagstatus bijgewerkt.');
     }
@@ -502,9 +556,45 @@ class EntertainerDashboardController extends Controller
                 'administration_id' => ['nullable', 'string', 'max:255'],
                 'workflow_id' => ['nullable', 'string', 'max:255'],
             ],
+            IntegrationProvider::Exact,
+            IntegrationProvider::SnelStart,
+            IntegrationProvider::Twinfield,
+            IntegrationProvider::Visma => [
+                'client_id' => ['nullable', 'string', 'max:5000'],
+                'client_secret' => ['nullable', 'string', 'max:5000'],
+                'refresh_token' => ['nullable', 'string', 'max:5000'],
+                'administration_id' => ['nullable', 'string', 'max:255'],
+            ],
+            IntegrationProvider::EBoekhouden => [
+                'username' => ['nullable', 'string', 'max:255'],
+                'security_code_1' => ['nullable', 'string', 'max:5000'],
+                'security_code_2' => ['nullable', 'string', 'max:5000'],
+            ],
+            IntegrationProvider::Jortt,
+            IntegrationProvider::Rompslomp => [
+                'api_token' => ['nullable', 'string', 'max:5000'],
+                'administration_id' => ['nullable', 'string', 'max:255'],
+            ],
             IntegrationProvider::Mollie => [
                 'api_key' => ['nullable', 'string', 'max:5000'],
                 'profile_id' => ['nullable', 'string', 'max:255'],
+            ],
+            IntegrationProvider::Stripe => [
+                'secret_key' => ['nullable', 'string', 'max:5000'],
+                'webhook_secret' => ['nullable', 'string', 'max:5000'],
+            ],
+            IntegrationProvider::PayPal => [
+                'client_id' => ['nullable', 'string', 'max:5000'],
+                'client_secret' => ['nullable', 'string', 'max:5000'],
+                'merchant_id' => ['nullable', 'string', 'max:255'],
+            ],
+            IntegrationProvider::PayNl => [
+                'api_token' => ['nullable', 'string', 'max:5000'],
+                'service_id' => ['nullable', 'string', 'max:255'],
+            ],
+            IntegrationProvider::Rabobank => [
+                'refresh_token' => ['nullable', 'string', 'max:5000'],
+                'merchant_id' => ['nullable', 'string', 'max:255'],
             ],
             IntegrationProvider::Postmark => [
                 'server_token' => ['nullable', 'string', 'max:5000'],
@@ -550,6 +640,13 @@ class EntertainerDashboardController extends Controller
             'refresh_token' => 'refresh token',
             'tenant_id' => 'tenant-ID',
             'calendar_id' => 'agenda-ID',
+            'username' => 'gebruikersnaam',
+            'security_code_1' => 'beveiligingscode 1',
+            'security_code_2' => 'beveiligingscode 2',
+            'secret_key' => 'secret key',
+            'webhook_secret' => 'webhook secret',
+            'merchant_id' => 'merchant-ID',
+            'service_id' => 'service-ID',
             'sync_direction' => 'synchronisatierichting',
             'block_busy_events' => 'bezet blokkeren',
         ]);
@@ -563,7 +660,12 @@ class EntertainerDashboardController extends Controller
                 continue;
             }
 
-            if (str_contains($key, 'token') || str_contains($key, 'key') || $key === 'client_secret') {
+            if (
+                str_contains($key, 'token')
+                || str_contains($key, 'key')
+                || str_contains($key, 'secret')
+                || str_contains($key, 'security_code')
+            ) {
                 $base['credentials'][$key] = $value;
             } else {
                 $base['settings'][$key] = $value;

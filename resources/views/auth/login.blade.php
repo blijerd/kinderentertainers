@@ -15,6 +15,7 @@
                 <input name="password" type="password" required class="w-full rounded-md border-slate-300 text-sm">
             </label>
             @error('email') <p class="text-sm text-red-700">{{ $message }}</p> @enderror
+            <a href="{{ route('password.request') }}" class="text-sm font-semibold text-brand-teal hover:text-brand-coral">Wachtwoord vergeten?</a>
             <button class="brand-button w-full">Inloggen</button>
         </form>
     </section>

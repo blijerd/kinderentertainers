@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\BookingStatus;
+use App\Actions\AcceptBookingQuote;
 use App\Enums\BookingRequestEventType;
+use App\Enums\BookingStatus;
 use App\Models\BookingRequest;
 use App\Models\Entertainer;
+use App\Services\BookingDocumentService;
+use App\Services\Integrations\CalendarIntegrationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,6 +50,9 @@ class CustomerPortalController extends Controller
     public function update(Request $request, BookingRequest $bookingRequest): RedirectResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
+
+        abort_if(in_array($bookingRequest->status, [BookingStatus::Rejected, BookingStatus::Cancelled], true), Response::HTTP_UNPROCESSABLE_ENTITY);
+        abort_if($bookingRequest->quote_accepted_at, Response::HTTP_CONFLICT);
 
         $validated = $request->validate([
             'customer_type' => ['required', Rule::in(['consument', 'b2b'])],
@@ -96,7 +102,7 @@ class CustomerPortalController extends Controller
         return back()->with('status', 'Bericht geplaatst.');
     }
 
-    public function cancel(Request $request, BookingRequest $bookingRequest): RedirectResponse
+    public function cancel(Request $request, BookingRequest $bookingRequest, CalendarIntegrationService $calendar): RedirectResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
         abort_if(in_array($bookingRequest->status, [BookingStatus::Rejected, BookingStatus::Cancelled], true), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -113,6 +119,12 @@ class CustomerPortalController extends Controller
             'cancelled_by' => 'customer',
             'cancellation_reason' => $validated['cancellation_reason'],
         ]);
+
+        try {
+            $calendar->syncBooking($bookingRequest->refresh());
+        } catch (\RuntimeException) {
+            // Scheduled sync will retry and expose the failure in the admin signals.
+        }
 
         return back()->with('status', 'De aanvraag is geannuleerd.');
     }
@@ -133,7 +145,7 @@ class CustomerPortalController extends Controller
         return back()->with('status', "{$entertainer->name} is verwijderd uit je favorieten.");
     }
 
-    public function acceptQuote(Request $request, BookingRequest $bookingRequest): RedirectResponse
+    public function acceptQuote(Request $request, BookingRequest $bookingRequest, AcceptBookingQuote $acceptBookingQuote): RedirectResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
 
@@ -142,27 +154,27 @@ class CustomerPortalController extends Controller
         abort_if($bookingRequest->quote_accepted_at, Response::HTTP_CONFLICT);
         abort_if($bookingRequest->quote_valid_until?->isPast(), Response::HTTP_GONE);
 
-        $bookingRequest->update([
-            'status' => BookingStatus::Confirmed,
-            'quote_accepted_at' => now(),
-            'agreement_accepted_at' => now(),
-            'agreement_version' => $bookingRequest->quote_terms_version,
-            'payment_status' => $bookingRequest->deposit_cents ? 'deposit_due' : 'not_required',
+        $acceptBookingQuote->handle($bookingRequest, [
+            'acceptance_name' => $request->user()->name,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
         ]);
 
         return back()->with('status', 'De offerte is geaccepteerd.');
     }
 
-    public function download(Request $request, BookingRequest $bookingRequest): StreamedResponse
+    public function download(Request $request, BookingRequest $bookingRequest, BookingDocumentService $documents, string $type = 'confirmation'): StreamedResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
 
         $bookingRequest->load(['entertainer', 'skill']);
-        $filename = 'aanvraag-'.$bookingRequest->id.'.txt';
+        abort_unless(in_array($type, ['quote', 'confirmation', 'invoice', 'cancellation'], true), Response::HTTP_NOT_FOUND);
 
-        return response()->streamDownload(function () use ($bookingRequest): void {
-            echo $this->documentBody($bookingRequest);
-        }, $filename, ['Content-Type' => 'text/plain; charset=UTF-8']);
+        $filename = 'aanvraag-'.$bookingRequest->id.'-'.$type.'.pdf';
+
+        return response()->streamDownload(function () use ($documents, $bookingRequest, $type): void {
+            echo $documents->pdf($bookingRequest, $type);
+        }, $filename, ['Content-Type' => 'application/pdf']);
     }
 
     private function authorizeCustomer(Request $request, BookingRequest $bookingRequest): void
@@ -202,6 +214,10 @@ class CustomerPortalController extends Controller
             'Overeenkomstversie: '.($bookingRequest->agreement_version ?: '-'),
             'Aanbetaling: '.($bookingRequest->deposit_cents ? '€ '.number_format($bookingRequest->deposit_cents / 100, 2, ',', '.') : '-'),
             'Betaalstatus: '.$bookingRequest->payment_status,
+            'Factuurstatus: '.$bookingRequest->invoice_status,
+            'Factuur via entertainer: Ja',
+            'Betaalprovider entertainer: '.($bookingRequest->payment_provider ?: '-'),
+            'Contant betalen toegestaan: '.($bookingRequest->cash_payment_allowed ? 'Ja' : 'Nee'),
             'Annulering: '.($bookingRequest->cancelled_at ? $bookingRequest->cancelled_at->format('d-m-Y H:i').' door '.$bookingRequest->cancelled_by : '-'),
             'Annuleringsreden: '.($bookingRequest->cancellation_reason ?: '-'),
         ]).PHP_EOL;

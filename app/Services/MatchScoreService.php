@@ -7,9 +7,7 @@ use App\Models\Entertainer;
 
 class MatchScoreService
 {
-    public function __construct(private readonly RegionDistanceEstimator $distanceEstimator)
-    {
-    }
+    public function __construct(private readonly RegionDistanceEstimator $distanceEstimator) {}
 
     /**
      * @return array{score: int, distance_km: ?float, travel_minutes: ?int, breakdown: array<string, int|string|null>}
@@ -39,13 +37,14 @@ class MatchScoreService
             'travel_minutes' => $travelMinutes,
             'breakdown' => $breakdown + [
                 'working_radius_km' => $entertainer->working_radius_km,
+                'max_travel_distance_km' => $this->maxTravelDistanceKm($entertainer),
             ],
         ];
     }
 
     public function isInsideWorkingArea(Entertainer $entertainer, ?float $distanceKm): bool
     {
-        return $distanceKm === null || $distanceKm <= $entertainer->working_radius_km;
+        return $distanceKm === null || $distanceKm <= $this->maxTravelDistanceKm($entertainer);
     }
 
     private function distanceScore(Entertainer $entertainer, ?float $distanceKm): int
@@ -54,13 +53,20 @@ class MatchScoreService
             return 8;
         }
 
-        if ($distanceKm > $entertainer->working_radius_km) {
+        $maxTravelDistanceKm = $this->maxTravelDistanceKm($entertainer);
+
+        if ($distanceKm > $maxTravelDistanceKm) {
             return 0;
         }
 
-        $ratio = $distanceKm / max(1, $entertainer->working_radius_km);
+        $ratio = $distanceKm / max(1, $maxTravelDistanceKm);
 
         return (int) max(5, round(20 - ($ratio * 15)));
+    }
+
+    private function maxTravelDistanceKm(Entertainer $entertainer): int
+    {
+        return (int) ($entertainer->max_travel_distance_km ?: $entertainer->working_radius_km);
     }
 
     private function reviewScore(Entertainer $entertainer): int

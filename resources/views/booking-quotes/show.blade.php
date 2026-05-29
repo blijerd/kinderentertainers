@@ -42,19 +42,36 @@
                 <p class="mt-4 text-sm text-slate-600">
                     Geldig tot en met {{ $bookingRequest->quote_valid_until?->format('d-m-Y') }}. Betaalstatus: {{ $bookingRequest->payment_status }}.
                 </p>
+                <p class="mt-2 text-sm text-slate-600">
+                    {{ $bookingRequest->entertainer->name }} factureert zelf. Kinderentertainers.nl int geen betaling voor deze boeking.
+                </p>
 
                 @if ($bookingRequest->quote_accepted_at)
                     <p class="mt-6 rounded-md bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">
                         Akkoord gegeven op {{ $bookingRequest->quote_accepted_at->format('d-m-Y H:i') }}. De boeking is bevestigd.
-                        @if ($bookingRequest->deposit_cents && $bookingRequest->payment_status !== 'paid')
-                            De aanbetaling staat nog open; de entertainer kan hiervoor een betaalverzoek sturen.
+                            @if ($bookingRequest->deposit_cents && $bookingRequest->payment_status !== 'paid')
+                                De aanbetaling staat nog open; de entertainer kan hiervoor zelf een betaalverzoek sturen
+                                @if ($bookingRequest->payment_provider)
+                                    via {{ \App\Enums\PaymentProvider::tryFrom($bookingRequest->payment_provider)?->label() ?? $bookingRequest->payment_provider }}
+                                @endif
+                            @if ($bookingRequest->cash_payment_allowed)
+                                of contant betaling op locatie accepteren
+                            @endif
+                                .
+                            @endif
+                        </p>
+                        @if ($bookingRequest->payment_checkout_url && $bookingRequest->payment_status !== 'paid')
+                            <a href="{{ $bookingRequest->payment_checkout_url }}" class="brand-button mt-4 w-full justify-center">Aanbetaling betalen</a>
                         @endif
-                    </p>
                 @elseif ($bookingRequest->quote_valid_until?->isPast())
                     <p class="mt-6 rounded-md bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Deze offerte is verlopen.</p>
                 @else
                     <form method="POST" action="{{ route('booking-quotes.accept', $bookingRequest->quote_acceptance_token) }}" class="mt-6">
                         @csrf
+                        <label class="mb-3 block space-y-1">
+                            <span class="text-sm font-medium text-slate-700">Naam voor akkoord</span>
+                            <input name="acceptance_name" value="{{ old('acceptance_name', $bookingRequest->name) }}" required class="w-full rounded-md border-slate-300 text-sm">
+                        </label>
                         <button class="brand-button w-full justify-center">Akkoord en boeking bevestigen</button>
                     </form>
                 @endif

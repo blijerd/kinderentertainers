@@ -43,6 +43,8 @@ class BookingRequestFactory extends Factory
             'customer_message' => fake()->optional()->sentence(),
             'payment_status' => 'open',
             'paid_cents' => 0,
+            'invoice_status' => 'not_started',
+            'cash_payment_allowed' => false,
         ];
     }
 }

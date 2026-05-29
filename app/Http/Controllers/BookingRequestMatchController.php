@@ -56,5 +56,7 @@ class BookingRequestMatchController extends Controller
             && hash_equals($bookingRequest->customer_selection_token, $token),
             404,
         );
+
+        abort_if($bookingRequest->customer_selection_expires_at?->isPast(), 410);
     }
 }

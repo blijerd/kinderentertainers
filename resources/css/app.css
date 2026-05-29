@@ -10,36 +10,37 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-    --color-brand-ink: #07142f;
-    --color-brand-teal: #6d35d8;
-    --color-brand-teal-dark: #4b1fa8;
-    --color-brand-mint: #f8f2ff;
+    --color-brand-ink: #102033;
+    --color-brand-teal: #0f766e;
+    --color-brand-teal-dark: #115e59;
+    --color-brand-mint: #ecfeff;
     --color-brand-sun: #ffc34d;
-    --color-brand-coral: #ff5d6c;
-    --color-brand-peach: #fff4e1;
-    --color-brand-cloud: #f8f7ff;
+    --color-brand-coral: #e84f65;
+    --color-brand-peach: #fff7ed;
+    --color-brand-cloud: #f7faf8;
 }
 
 @layer base {
     body {
         background:
-            radial-gradient(circle at 12% 4%, rgba(255, 195, 77, 0.18), transparent 26rem),
-            radial-gradient(circle at 88% 10%, rgba(109, 53, 216, 0.14), transparent 24rem),
-            linear-gradient(180deg, #fff8ec 0%, #f8f7ff 34rem);
+            linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 22rem),
+            linear-gradient(225deg, rgba(255, 195, 77, 0.14), transparent 20rem),
+            linear-gradient(180deg, #fffaf2 0%, #f7faf8 32rem, #ffffff 58rem);
     }
 
     .dark body {
         background:
-            radial-gradient(circle at 16% 2%, rgba(255, 93, 108, 0.20), transparent 24rem),
-            radial-gradient(circle at 82% 10%, rgba(109, 53, 216, 0.32), transparent 26rem),
-            linear-gradient(180deg, #050b1f 0%, #101326 34rem);
+            linear-gradient(135deg, rgba(15, 118, 110, 0.16), transparent 24rem),
+            linear-gradient(225deg, rgba(255, 195, 77, 0.10), transparent 22rem),
+            linear-gradient(180deg, #07111f 0%, #101826 34rem);
     }
 
     input,
     select,
     textarea {
-        border-color: #cbd5e1;
+        border-color: #d9e2e7;
         background-color: #ffffff;
+        min-height: 2.75rem;
     }
 
     .dark input,
@@ -53,8 +54,8 @@
     input:focus,
     select:focus,
     textarea:focus {
-        border-color: #6d35d8;
-        box-shadow: 0 0 0 3px rgba(109, 53, 216, 0.20);
+        border-color: #0f766e;
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
         outline: none;
     }
 }
@@ -65,15 +66,15 @@
     }
 
     .brand-card {
-        @apply rounded-lg border border-violet-100/80 bg-white shadow-sm shadow-violet-950/5 dark:border-slate-700 dark:bg-slate-900;
+        @apply rounded-lg border border-slate-200/80 bg-white shadow-sm shadow-slate-950/5 dark:border-slate-700 dark:bg-slate-900;
     }
 
     .brand-panel {
-        @apply rounded-lg border border-violet-100 bg-white/90 shadow-sm shadow-violet-950/10 dark:border-slate-700 dark:bg-slate-900/90;
+        @apply rounded-lg border border-slate-200/80 bg-white/92 shadow-sm shadow-slate-950/10 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90;
     }
 
     .brand-kicker {
-        @apply text-sm font-black uppercase tracking-[0.18em] text-brand-coral;
+        @apply text-xs font-black uppercase tracking-[0.18em] text-brand-coral;
     }
 
     .brand-heading {
@@ -81,19 +82,43 @@
     }
 
     .brand-button {
-        @apply inline-flex items-center justify-center rounded-md bg-brand-teal px-5 py-3 text-sm font-bold text-white shadow-sm shadow-violet-950/20 transition hover:bg-brand-teal-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal;
+        @apply inline-flex min-h-11 items-center justify-center rounded-md bg-brand-teal px-5 py-3 text-sm font-bold text-white shadow-sm shadow-teal-950/20 transition hover:-translate-y-px hover:bg-brand-teal-dark hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-teal;
     }
 
     .brand-button-secondary {
-        @apply inline-flex items-center justify-center rounded-md border border-violet-200 bg-white px-5 py-3 text-sm font-bold text-brand-ink transition hover:border-brand-coral hover:text-brand-coral dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100;
+        @apply inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-brand-ink transition hover:-translate-y-px hover:border-brand-teal hover:text-brand-teal hover:shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100;
     }
 
     .brand-pill {
-        @apply rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-brand-teal;
+        @apply rounded-full bg-brand-mint px-3 py-1 text-xs font-bold text-brand-teal ring-1 ring-teal-100;
+    }
+
+    .brand-section-title {
+        @apply text-xl font-black tracking-tight text-brand-ink dark:text-white;
+    }
+
+    .brand-field {
+        @apply space-y-1.5;
+    }
+
+    .brand-field-label {
+        @apply text-sm font-bold text-slate-700 dark:text-slate-200;
+    }
+
+    .brand-input {
+        @apply w-full rounded-md border-slate-300 bg-white text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100;
+    }
+
+    .brand-choice {
+        @apply rounded-md border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-brand-teal hover:bg-brand-mint dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+    }
+
+    .brand-step {
+        @apply rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200;
     }
 
     .dashboard-tab {
-        @apply rounded-md border border-violet-100 bg-white px-4 py-2 text-sm font-bold text-brand-ink transition hover:border-brand-coral hover:text-brand-coral dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+        @apply rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-brand-ink transition hover:border-brand-teal hover:text-brand-teal dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
     }
 
     .dashboard-tab[aria-pressed="true"] {
@@ -134,5 +159,45 @@
     .legal-content ul,
     .legal-content ol {
         @apply mt-4 leading-7;
+    }
+
+    .landing-content {
+        @apply text-slate-700 dark:text-slate-200;
+    }
+
+    .landing-content h2,
+    .landing-content h3 {
+        @apply mt-8 font-bold text-brand-ink first:mt-0 dark:text-white;
+    }
+
+    .landing-content h2 {
+        @apply text-2xl;
+    }
+
+    .landing-content h3 {
+        @apply text-xl;
+    }
+
+    .landing-content p,
+    .landing-content ul,
+    .landing-content ol {
+        @apply mt-4 leading-8;
+    }
+
+    .landing-content ul,
+    .landing-content ol {
+        @apply pl-6;
+    }
+
+    .landing-content ul {
+        @apply list-disc;
+    }
+
+    .landing-content ol {
+        @apply list-decimal;
+    }
+
+    .landing-content a {
+        @apply font-semibold text-brand-teal underline decoration-teal-300 underline-offset-4 hover:text-brand-coral;
     }
 }

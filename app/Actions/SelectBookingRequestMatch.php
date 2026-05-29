@@ -5,11 +5,14 @@ namespace App\Actions;
 use App\Enums\BookingRequestMatchStatus;
 use App\Enums\BookingStatus;
 use App\Models\BookingRequestMatch;
+use App\Services\BookingWorkflowNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SelectBookingRequestMatch
 {
+    public function __construct(private readonly BookingWorkflowNotificationService $notifications) {}
+
     public function handle(BookingRequestMatch $match): BookingRequestMatch
     {
         return DB::transaction(function () use ($match): BookingRequestMatch {
@@ -29,9 +32,14 @@ class SelectBookingRequestMatch
                 ]);
             }
 
-            $bookingRequest->matches()
+            $expiredMatches = $bookingRequest->matches()
+                ->with('entertainer.user')
                 ->whereKeyNot($match->id)
                 ->where('status', '!=', BookingRequestMatchStatus::Rejected->value)
+                ->get();
+
+            $bookingRequest->matches()
+                ->whereKey($expiredMatches->pluck('id'))
                 ->update([
                     'status' => BookingRequestMatchStatus::Expired->value,
                     'selected_at' => null,
@@ -47,7 +55,17 @@ class SelectBookingRequestMatch
                 'status' => BookingStatus::Option,
             ]);
 
-            return $match->refresh();
+            $match = $match->refresh();
+
+            $this->notifications->notifyMatchSelected($match);
+            $expiredMatches->each(fn (BookingRequestMatch $expiredMatch) => $this->notifications->notifyMatchExpired($expiredMatch));
+            $this->notifications->notifyCustomerBookingUpdated(
+                $bookingRequest->refresh(),
+                'Je keuze is opgeslagen',
+                'Je hebt '.$match->entertainer?->name.' gekozen voor je aanvraag. De entertainer kan nu de offerte of verdere afstemming voorbereiden.',
+            );
+
+            return $match;
         });
     }
 }

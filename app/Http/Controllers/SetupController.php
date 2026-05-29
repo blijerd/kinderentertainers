@@ -33,6 +33,7 @@ class SetupController extends Controller
         ]);
 
         $user = User::query()->create($attributes);
+        $user->forceFill(['email_verified_at' => now()])->save();
 
         $adminRole = Role::query()->firstOrCreate([
             'name' => 'admin',

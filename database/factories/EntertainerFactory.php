@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\AccountingProvider;
+use App\Enums\PaymentProvider;
 use App\Models\Entertainer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -50,6 +52,13 @@ class EntertainerFactory extends Factory
             'city' => fake()->city(),
             'region' => fake()->randomElement(['Noord-Holland', 'Zuid-Holland', 'Utrecht', 'Noord-Brabant', 'Gelderland']),
             'working_radius_km' => fake()->randomElement([25, 40, 60, 80]),
+            'travel_free_km' => fake()->randomElement([0, 10, 20]),
+            'max_travel_distance_km' => fake()->randomElement([25, 40, 60, 80]),
+            'accounting_provider' => AccountingProvider::Manual,
+            'accounting_notes' => null,
+            'payment_provider' => PaymentProvider::Manual,
+            'cash_payment_enabled' => false,
+            'payment_notes' => null,
             'active' => true,
             'featured' => fake()->boolean(30),
             'profile_complete' => true,

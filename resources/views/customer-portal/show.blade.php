@@ -16,11 +16,45 @@
             <p class="mt-6 rounded-md bg-red-50 px-4 py-3 text-sm font-medium text-red-800">Controleer de invoer en probeer opnieuw.</p>
         @endif
 
+        <div class="mt-8 grid gap-4 md:grid-cols-3">
+            <div class="brand-card p-5 md:col-span-2">
+                <p class="brand-kicker">Volgende stap</p>
+                @if (! $bookingRequest->quote_sent_at)
+                    <h2 class="mt-1 text-xl font-bold text-brand-ink dark:text-white">Wacht op de offerte</h2>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">De entertainer beoordeelt je aanvraag. Je kunt hieronder een bericht sturen als er iets is gewijzigd.</p>
+                @elseif (! $bookingRequest->quote_accepted_at && ! $bookingRequest->quote_valid_until?->isPast())
+                    <h2 class="mt-1 text-xl font-bold text-brand-ink dark:text-white">Bekijk en accepteer de offerte</h2>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Totaal: € {{ number_format($bookingRequest->quote_total_cents / 100, 2, ',', '.') }}. Geldig t/m {{ $bookingRequest->quote_valid_until?->format('d-m-Y') }}.</p>
+                @elseif ($bookingRequest->quote_accepted_at)
+                    <h2 class="mt-1 text-xl font-bold text-brand-ink dark:text-white">Boeking bevestigd</h2>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">De offerte is geaccepteerd. Stem betaling en laatste details af met de entertainer.</p>
+                @else
+                    <h2 class="mt-1 text-xl font-bold text-brand-ink dark:text-white">Offerte verlopen</h2>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Stuur een bericht als je een nieuwe offerte wilt ontvangen.</p>
+                @endif
+            </div>
+            <div class="brand-card p-5">
+                <p class="text-sm font-bold text-brand-coral">{{ $bookingRequest->status->label() }}</p>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $bookingRequest->event_date->format('d-m-Y') }} van {{ $bookingRequest->start_time->format('H:i') }} tot {{ $bookingRequest->end_time->format('H:i') }}</p>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ $bookingRequest->city }}</p>
+            </div>
+        </div>
+
         <div class="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <form method="POST" action="{{ route('customer-portal.update', $bookingRequest) }}" class="brand-card grid gap-4 p-5 md:grid-cols-2">
+            <details class="brand-card p-5">
+                <summary class="cursor-pointer text-lg font-bold text-brand-ink dark:text-white">Gegevens wijzigen</summary>
+                @if ($bookingRequest->quote_accepted_at)
+                    <p class="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                        De offerte is al geaccepteerd. Stuur een bericht als er nog iets moet worden afgestemd.
+                    </p>
+                @elseif (in_array($bookingRequest->status, [\App\Enums\BookingStatus::Rejected, \App\Enums\BookingStatus::Cancelled], true))
+                    <p class="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                        Deze aanvraag kan niet meer worden aangepast.
+                    </p>
+                @else
+                <form method="POST" action="{{ route('customer-portal.update', $bookingRequest) }}" class="mt-5 grid gap-4 md:grid-cols-2">
                 @csrf
                 @method('PATCH')
-                <h2 class="text-lg font-bold text-brand-ink dark:text-white md:col-span-2">Gegevens wijzigen</h2>
                 <label class="space-y-1">
                     <span class="text-sm font-medium">Klanttype</span>
                     <select name="customer_type" required class="w-full rounded-md border-slate-300 text-sm">
@@ -129,8 +163,10 @@
                         @error('selected_extras') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </div>
                 @endif
-                <button class="brand-button md:col-span-2">Gegevens opslaan</button>
-            </form>
+                    <button class="brand-button md:col-span-2">Gegevens opslaan</button>
+                </form>
+                @endif
+            </details>
 
             <aside class="space-y-6">
                 <div class="brand-card p-5">
@@ -149,6 +185,24 @@
                     </p>
                     @if ($bookingRequest->quote_sent_at)
                         <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Betaalstatus: {{ $bookingRequest->payment_status }}.</p>
+                        @if ($bookingRequest->payment_checkout_url && $bookingRequest->payment_status !== 'paid')
+                            <a href="{{ $bookingRequest->payment_checkout_url }}" class="brand-button mt-3 w-full justify-center">Aanbetaling betalen</a>
+                        @endif
+                    @endif
+                    @if ($bookingRequest->quote_accepted_at)
+                        <div class="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-950 dark:text-slate-200">
+                            <p class="font-semibold">Factuur en betaling lopen rechtstreeks via {{ $bookingRequest->entertainer?->name }}.</p>
+                            <p class="mt-1">
+                                De entertainer verstuurt zelf de factuur
+                                @if ($bookingRequest->payment_provider)
+                                    en kan betalen regelen via {{ \App\Enums\PaymentProvider::tryFrom($bookingRequest->payment_provider)?->label() ?? $bookingRequest->payment_provider }}
+                                @endif
+                                @if ($bookingRequest->cash_payment_allowed)
+                                    of contant op locatie accepteren
+                                @endif
+                                .
+                            </p>
+                        </div>
                     @endif
                     @if (
                         $bookingRequest->quote_sent_at
@@ -207,7 +261,7 @@
                             @csrf
                             <textarea name="cancellation_reason" rows="3" required class="w-full rounded-md border-slate-300 text-sm" placeholder="Reden van annulering"></textarea>
                             @error('cancellation_reason') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
-                            <button class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700">Aanvraag annuleren</button>
+                            <button class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onclick="return confirm('Weet je zeker dat je deze aanvraag wilt annuleren?')">Aanvraag annuleren</button>
                         </form>
                     @elseif ($bookingRequest->cancelled_at)
                         <p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">

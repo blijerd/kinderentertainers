@@ -1,9 +1,37 @@
+@props([
+    'title' => 'Kinderentertainers.nl',
+    'metaDescription' => null,
+    'canonicalUrl' => null,
+    'robots' => null,
+    'ogImage' => null,
+])
+
 <!DOCTYPE html>
 <html lang="nl" data-theme="auto">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Kinderentertainers.nl' }}</title>
+    <title>{{ $title }}</title>
+    @if ($metaDescription)
+        <meta name="description" content="{{ $metaDescription }}">
+    @endif
+    @if ($canonicalUrl)
+        <link rel="canonical" href="{{ $canonicalUrl }}">
+    @endif
+    @if ($robots)
+        <meta name="robots" content="{{ $robots }}">
+    @endif
+    <meta property="og:title" content="{{ $title }}">
+    @if ($metaDescription)
+        <meta property="og:description" content="{{ $metaDescription }}">
+    @endif
+    @if ($canonicalUrl)
+        <meta property="og:url" content="{{ $canonicalUrl }}">
+    @endif
+    @if ($ogImage)
+        <meta property="og:image" content="{{ $ogImage }}">
+    @endif
+    <meta property="og:type" content="website">
     <script>
         (() => {
             let prefs = {};
@@ -23,27 +51,27 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen font-sans text-slate-900 antialiased dark:text-slate-100">
-    <header class="sticky top-0 z-20 border-b border-violet-100/80 bg-white/92 backdrop-blur dark:border-slate-700 dark:bg-slate-950/90">
-        <div class="brand-shell flex items-center justify-between py-3">
+    <header class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/92 backdrop-blur dark:border-slate-700 dark:bg-slate-950/90">
+        <div class="brand-shell flex flex-wrap items-center justify-between gap-3 py-3">
             <a href="{{ route('home') }}" class="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-teal">
                 <x-brand.logo />
             </a>
             <nav class="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 sm:gap-5">
-                <a href="{{ route('entertainers.index') }}" class="hover:text-brand-coral">Entertainers</a>
+                <a href="{{ route('entertainers.index') }}" class="hover:text-brand-teal">Entertainers</a>
                 @auth
                     @if (auth()->user()->hasRole('klant') && ! auth()->user()->hasRole('entertainer'))
-                        <a href="{{ route('customer-portal.index') }}" class="hover:text-brand-coral">Klantportaal</a>
+                        <a href="{{ route('customer-portal.index') }}" class="hover:text-brand-teal">Klantportaal</a>
                     @else
-                        <a href="{{ route('dashboard') }}" class="hover:text-brand-coral">Dashboard</a>
+                        <a href="{{ route('dashboard') }}" class="hover:text-brand-teal">Dashboard</a>
                     @endif
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button class="hover:text-brand-coral">Uitloggen</button>
+                        <button class="hover:text-brand-teal">Uitloggen</button>
                     </form>
                 @else
-                    <a href="{{ route('login') }}" class="hover:text-brand-coral">Inloggen</a>
+                    <a href="{{ route('login') }}" class="hover:text-brand-teal">Inloggen</a>
                 @endauth
-                <button type="button" data-accessibility-open class="rounded-md border border-violet-200 px-2 py-1 text-xs hover:border-brand-coral dark:border-slate-600" aria-label="Weergave aanpassen">Aa</button>
+                <button type="button" data-accessibility-open class="rounded-md border border-slate-300 px-2 py-1 text-xs hover:border-brand-teal dark:border-slate-600" aria-label="Weergave aanpassen">Aa</button>
             </nav>
         </div>
     </header>
@@ -52,12 +80,12 @@
         {{ $slot }}
     </main>
 
-    <footer class="border-t border-slate-200 py-8 text-sm dark:border-slate-800">
+    <footer class="border-t border-slate-200 bg-white/70 py-8 text-sm dark:border-slate-800 dark:bg-slate-950/70">
         <div class="brand-shell flex flex-wrap gap-4 text-slate-600 dark:text-slate-300">
-            <a href="{{ route('legal.terms') }}" class="hover:text-brand-coral">Algemene voorwaarden</a>
-            <a href="{{ route('legal.privacy') }}" class="hover:text-brand-coral">Privacyverklaring</a>
-            <a href="{{ route('legal.cookies') }}" class="hover:text-brand-coral">Cookieverklaring</a>
-            <button type="button" data-cookie-open class="hover:text-brand-coral">Cookievoorkeuren</button>
+            <a href="{{ route('legal.terms') }}" class="hover:text-brand-teal">Algemene voorwaarden</a>
+            <a href="{{ route('legal.privacy') }}" class="hover:text-brand-teal">Privacyverklaring</a>
+            <a href="{{ route('legal.cookies') }}" class="hover:text-brand-teal">Cookieverklaring</a>
+            <button type="button" data-cookie-open class="hover:text-brand-teal">Cookievoorkeuren</button>
         </div>
     </footer>
 

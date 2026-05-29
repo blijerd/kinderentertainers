@@ -23,6 +23,7 @@ class CreatePendingReviewForBookingRequest
                 'entertainer_id' => $entertainer->id,
                 'customer_name' => $bookingRequest->name,
                 'customer_email' => $bookingRequest->email,
+                'token_expires_at' => now()->addDays(45),
             ],
         );
     }

@@ -23,7 +23,7 @@
 
     @unless ($markOnly)
         <span class="leading-none">
-            <span class="block text-base font-black tracking-tight text-brand-ink dark:text-white sm:text-lg">kinder<span class="text-brand-teal">entertainers</span><span class="text-brand-coral">.nl</span></span>
+            <span class="block text-base font-black tracking-tight text-brand-ink dark:text-white sm:text-lg">kinder<span class="text-brand-teal dark:text-brand-mint">entertainers</span><span class="text-brand-coral dark:text-brand-sun">.nl</span></span>
             <span class="block text-xs font-bold lowercase tracking-[0.12em] text-brand-ink/75 dark:text-white/75">vinden &bull; boeken &bull; genieten</span>
         </span>
     @endunless

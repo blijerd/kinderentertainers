@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\AcceptBookingQuote;
 use App\Enums\BookingStatus;
 use App\Models\BookingRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class BookingQuoteController extends Controller
@@ -16,19 +19,23 @@ class BookingQuoteController extends Controller
         return view('booking-quotes.show', compact('bookingRequest'));
     }
 
-    public function accept(string $token): RedirectResponse
+    public function accept(Request $request, string $token, AcceptBookingQuote $acceptBookingQuote): RedirectResponse
     {
         $bookingRequest = $this->bookingRequest($token);
 
-        abort_if($bookingRequest->quote_accepted_at, 409, 'Deze offerte is al akkoord gegeven.');
-        abort_if($bookingRequest->quote_valid_until?->isPast(), 410, 'Deze offerte is verlopen.');
+        abort_if(in_array($bookingRequest->status, [BookingStatus::Rejected, BookingStatus::Cancelled], true), Response::HTTP_UNPROCESSABLE_ENTITY);
+        abort_unless($bookingRequest->quote_total_cents !== null, Response::HTTP_UNPROCESSABLE_ENTITY);
+        abort_if($bookingRequest->quote_accepted_at, Response::HTTP_CONFLICT, 'Deze offerte is al akkoord gegeven.');
+        abort_if($bookingRequest->quote_valid_until?->isPast(), Response::HTTP_GONE, 'Deze offerte is verlopen.');
 
-        $bookingRequest->update([
-            'status' => BookingStatus::Confirmed,
-            'quote_accepted_at' => now(),
-            'agreement_accepted_at' => now(),
-            'agreement_version' => $bookingRequest->quote_terms_version,
-            'payment_status' => $bookingRequest->deposit_cents ? 'deposit_due' : 'not_required',
+        $validated = $request->validate([
+            'acceptance_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $acceptBookingQuote->handle($bookingRequest, [
+            'acceptance_name' => $validated['acceptance_name'] ?? null,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
         ]);
 
         return redirect()

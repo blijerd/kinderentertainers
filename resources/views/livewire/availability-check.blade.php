@@ -30,11 +30,11 @@ new class extends Component
 ?>
 
 <div class="brand-card p-5">
-    <h2 class="text-lg font-bold text-brand-ink">Beschikbaarheid controleren</h2>
-    <form wire:submit="check" class="mt-4 grid gap-3 md:grid-cols-4">
-        <input wire:model="date" type="date" class="rounded-md border-slate-300 text-sm" aria-label="Datum">
-        <input wire:model="startTime" type="time" class="rounded-md border-slate-300 text-sm" aria-label="Starttijd">
-        <input wire:model="endTime" type="time" class="rounded-md border-slate-300 text-sm" aria-label="Eindtijd">
+    <h2 class="text-lg font-black text-brand-ink dark:text-white">Beschikbaarheid controleren</h2>
+    <form wire:submit="check" class="mt-4 grid gap-3">
+        <input wire:model="date" type="date" class="brand-input" aria-label="Datum">
+        <input wire:model="startTime" type="time" class="brand-input" aria-label="Starttijd">
+        <input wire:model="endTime" type="time" class="brand-input" aria-label="Eindtijd">
         <button class="brand-button px-4 py-2">Check</button>
     </form>
     @error('date') <p class="mt-2 text-sm text-red-700">{{ $message }}</p> @enderror

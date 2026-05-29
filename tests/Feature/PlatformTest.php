@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\CheckEntertainerAvailability;
+use App\Actions\CreateBookingQuote;
 use App\Actions\FindAvailableEntertainersForRequest;
 use App\Enums\AccountingProvider;
 use App\Enums\AvailabilityStatus;
@@ -12,6 +13,7 @@ use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
 use App\Enums\IntegrationProvider;
 use App\Enums\LegalDocumentType;
+use App\Enums\PaymentProvider;
 use App\Enums\ReviewStatus;
 use App\Mail\ReviewRequestMail;
 use App\Models\Availability;
@@ -19,16 +21,24 @@ use App\Models\AvailabilityRule;
 use App\Models\BookingRequest;
 use App\Models\BookingRequestMatch;
 use App\Models\Entertainer;
+use App\Models\EntertainerIntegration;
+use App\Models\LandingPage;
 use App\Models\LegalDocument;
 use App\Models\Rate;
 use App\Models\Review;
 use App\Models\Skill;
 use App\Models\User;
 use App\Services\AdminDashboardSignalService;
+use App\Services\Integrations\InvoiceIntegrationService;
+use App\Services\Integrations\PaymentCheckoutService;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -76,6 +86,79 @@ class PlatformTest extends TestCase
             ->set('skill', 'schminker')
             ->assertSee('Sanne Schminkster')
             ->assertDontSee('Magische Milan');
+    }
+
+    public function test_published_landing_page_renders_with_seo_metadata(): void
+    {
+        $landingPage = LandingPage::query()->create([
+            'title' => 'Schminker voor kinderfeestje',
+            'slug' => 'schminker-kinderfeestje',
+            'intro' => 'Boek snel een professionele schminker.',
+            'body' => 'Schminken maakt elk kinderfeest net wat feestelijker.',
+            'cta_label' => 'Bekijk entertainers',
+            'cta_url' => route('entertainers.index'),
+            'seo_title' => 'Schminker kinderfeestje boeken',
+            'meta_description' => 'Vind en boek een schminker voor een kinderfeestje.',
+            'is_published' => true,
+            'published_at' => now()->subMinute(),
+        ]);
+
+        $this->get(route('landing-pages.show', $landingPage))
+            ->assertOk()
+            ->assertSee('<title>Schminker kinderfeestje boeken</title>', false)
+            ->assertSee('name="description" content="Vind en boek een schminker voor een kinderfeestje."', false)
+            ->assertSee('Schminker voor kinderfeestje')
+            ->assertSee('Schminken maakt elk kinderfeest net wat feestelijker.');
+    }
+
+    public function test_unpublished_landing_page_is_not_public(): void
+    {
+        $landingPage = LandingPage::query()->create([
+            'title' => 'Concept pagina',
+            'slug' => 'concept-pagina',
+            'is_published' => false,
+        ]);
+
+        $this->get(route('landing-pages.show', $landingPage))
+            ->assertNotFound();
+    }
+
+    public function test_landing_page_does_not_render_unsafe_cta_url(): void
+    {
+        $landingPage = LandingPage::query()->create([
+            'title' => 'Veilige CTA',
+            'slug' => 'veilige-cta',
+            'cta_label' => 'Klik hier',
+            'cta_url' => 'javascript:alert(1)',
+            'is_published' => true,
+        ]);
+
+        $this->get(route('landing-pages.show', $landingPage))
+            ->assertOk()
+            ->assertDontSee('javascript:alert(1)', false)
+            ->assertDontSee('Klik hier');
+    }
+
+    public function test_sitemap_includes_indexable_landing_pages(): void
+    {
+        LandingPage::query()->create([
+            'title' => 'Ballonnenclown boeken',
+            'slug' => 'ballonnenclown-boeken',
+            'is_published' => true,
+        ]);
+
+        LandingPage::query()->create([
+            'title' => 'Noindex pagina',
+            'slug' => 'noindex-pagina',
+            'is_published' => true,
+            'noindex' => true,
+        ]);
+
+        $this->get(route('sitemap'))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/xml')
+            ->assertSee(url('/ballonnenclown-boeken'))
+            ->assertDontSee(url('/noindex-pagina'));
     }
 
     public function test_livewire_public_smart_filters_work(): void
@@ -430,8 +513,8 @@ class PlatformTest extends TestCase
         $download = $this->actingAs($customer)
             ->get(route('customer-portal.download', $bookingRequest));
 
-        $download->assertDownload('aanvraag-'.$bookingRequest->id.'.txt');
-        $this->assertStringContainsString('Aanvraag '.$bookingRequest->id, $download->streamedContent());
+        $download->assertDownload('aanvraag-'.$bookingRequest->id.'-confirmation.pdf');
+        $this->assertStringStartsWith('%PDF-', $download->streamedContent());
     }
 
     public function test_customer_cannot_accept_quote_before_quote_is_sent(): void
@@ -458,6 +541,41 @@ class PlatformTest extends TestCase
         $this->assertNull($bookingRequest->quote_accepted_at);
     }
 
+    public function test_customer_cannot_update_booking_details_after_quote_acceptance(): void
+    {
+        $this->createRoles();
+        $customer = User::factory()->create(['email' => 'marieke@example.com']);
+        $customer->assignRole('klant');
+        $bookingRequest = BookingRequest::factory()->create([
+            'customer_id' => $customer->id,
+            'email' => 'marieke@example.com',
+            'status' => BookingStatus::Confirmed,
+            'quote_accepted_at' => now(),
+            'city' => 'Amsterdam',
+        ]);
+
+        $this->actingAs($customer)
+            ->patch(route('customer-portal.update', $bookingRequest), [
+                'customer_type' => CustomerType::Consumer->value,
+                'name' => 'Marieke de Vries',
+                'company_name' => null,
+                'email' => 'marieke@example.com',
+                'phone' => '0612345678',
+                'event_date' => now()->addWeeks(3)->toDateString(),
+                'start_time' => '14:00',
+                'end_time' => '16:00',
+                'address' => 'Nieuweweg 2',
+                'postal_code' => '1234 AB',
+                'city' => 'Utrecht',
+                'children_count' => 14,
+                'children_ages' => '5-7 jaar',
+                'message' => 'Graag buiten starten.',
+            ])
+            ->assertConflict();
+
+        $this->assertSame('Amsterdam', $bookingRequest->refresh()->city);
+    }
+
     public function test_customer_cannot_view_another_customers_booking_request(): void
     {
         $this->createRoles();
@@ -477,7 +595,9 @@ class PlatformTest extends TestCase
         $this->createRoles();
         $user = User::factory()->create();
         $user->assignRole('entertainer');
-        $entertainer = Entertainer::factory()->create(['user_id' => $user->id]);
+        $entertainer = Entertainer::factory()->create([
+            'user_id' => $user->id,
+        ]);
         $bookingRequest = BookingRequest::factory()->create(['entertainer_id' => null]);
         $match = BookingRequestMatch::query()->create([
             'booking_request_id' => $bookingRequest->id,
@@ -512,7 +632,9 @@ class PlatformTest extends TestCase
         $this->createRoles();
         $user = User::factory()->create();
         $user->assignRole('entertainer');
-        $entertainer = Entertainer::factory()->create(['user_id' => $user->id]);
+        $entertainer = Entertainer::factory()->create([
+            'user_id' => $user->id,
+        ]);
         $otherEntertainer = Entertainer::factory()->create();
         $ownRequest = BookingRequest::factory()->create([
             'entertainer_id' => null,
@@ -548,7 +670,9 @@ class PlatformTest extends TestCase
         $this->createRoles();
         $user = User::factory()->create();
         $user->assignRole('entertainer');
-        $entertainer = Entertainer::factory()->create(['user_id' => $user->id]);
+        $entertainer = Entertainer::factory()->create([
+            'user_id' => $user->id,
+        ]);
         $bookingRequest = BookingRequest::factory()->create([
             'entertainer_id' => null,
             'status' => BookingStatus::New,
@@ -599,13 +723,18 @@ class PlatformTest extends TestCase
 
     public function test_customer_can_choose_responded_general_request_match(): void
     {
+        Mail::fake();
+
         $bookingRequest = BookingRequest::factory()->create([
             'entertainer_id' => null,
             'customer_selection_token' => 'customer-token',
             'status' => BookingStatus::New,
+            'email' => 'klant@example.com',
         ]);
-        $chosenEntertainer = Entertainer::factory()->create();
-        $otherEntertainer = Entertainer::factory()->create();
+        $chosenUser = User::factory()->create(['email' => 'gekozen@example.com']);
+        $otherUser = User::factory()->create(['email' => 'ander@example.com']);
+        $chosenEntertainer = Entertainer::factory()->create(['user_id' => $chosenUser->id]);
+        $otherEntertainer = Entertainer::factory()->create(['user_id' => $otherUser->id]);
         $chosenMatch = BookingRequestMatch::query()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $chosenEntertainer->id,
@@ -640,6 +769,7 @@ class PlatformTest extends TestCase
             'id' => $otherMatch->id,
             'status' => BookingRequestMatchStatus::Expired->value,
         ]);
+        Mail::assertSentCount(3);
     }
 
     public function test_customer_cannot_choose_expired_general_request_match_after_selection(): void
@@ -684,6 +814,27 @@ class PlatformTest extends TestCase
             'status' => BookingRequestMatchStatus::Expired->value,
             'selected_at' => null,
         ]);
+    }
+
+    public function test_customer_selection_token_expires(): void
+    {
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => null,
+            'customer_selection_token' => 'expired-customer-token',
+            'customer_selection_expires_at' => now()->subMinute(),
+            'status' => BookingStatus::New,
+        ]);
+        $match = BookingRequestMatch::query()->create([
+            'booking_request_id' => $bookingRequest->id,
+            'entertainer_id' => Entertainer::factory()->create()->id,
+            'status' => BookingRequestMatchStatus::Available,
+            'matched_at' => now(),
+            'responded_at' => now(),
+        ]);
+
+        $this->post(route('booking-requests.matches.select', [$bookingRequest, $match]), [
+            'token' => 'expired-customer-token',
+        ])->assertGone();
     }
 
     public function test_available_entertainer_finder_only_returns_active_available_schminkers(): void
@@ -1014,7 +1165,13 @@ class PlatformTest extends TestCase
         $this->createRoles();
         $user = User::factory()->create();
         $user->assignRole('entertainer');
-        $entertainer = Entertainer::factory()->create(['user_id' => $user->id]);
+        $entertainer = Entertainer::factory()->create([
+            'user_id' => $user->id,
+            'payment_provider' => PaymentProvider::Mollie,
+            'cash_payment_enabled' => true,
+            'travel_free_km' => 0,
+            'max_travel_distance_km' => 40,
+        ]);
         Rate::factory()->create([
             'entertainer_id' => $entertainer->id,
             'customer_type' => CustomerType::Consumer,
@@ -1056,6 +1213,192 @@ class PlatformTest extends TestCase
 
         $this->assertSame(BookingStatus::Confirmed, $bookingRequest->status);
         $this->assertNotNull($bookingRequest->quote_accepted_at);
+        $this->assertSame('ready_for_entertainer', $bookingRequest->invoice_status);
+        $this->assertSame(AccountingProvider::Manual->value, $bookingRequest->invoice_provider);
+        $this->assertSame(PaymentProvider::Mollie->value, $bookingRequest->payment_provider);
+        $this->assertTrue($bookingRequest->cash_payment_allowed);
+    }
+
+    public function test_public_quote_link_cannot_confirm_cancelled_booking(): void
+    {
+        $bookingRequest = BookingRequest::factory()->create([
+            'status' => BookingStatus::Cancelled,
+            'quote_sent_at' => now(),
+            'quote_total_cents' => 10000,
+            'quote_acceptance_token' => 'cancelled-quote-token',
+            'quote_valid_until' => now()->addDay(),
+        ]);
+
+        $this->post(route('booking-quotes.accept', $bookingRequest->quote_acceptance_token))
+            ->assertUnprocessable();
+
+        $this->assertSame(BookingStatus::Cancelled, $bookingRequest->refresh()->status);
+        $this->assertNull($bookingRequest->quote_accepted_at);
+    }
+
+    public function test_public_quote_link_cannot_accept_incomplete_quote(): void
+    {
+        $bookingRequest = BookingRequest::factory()->create([
+            'status' => BookingStatus::Option,
+            'quote_sent_at' => now(),
+            'quote_total_cents' => null,
+            'quote_acceptance_token' => 'incomplete-quote-token',
+            'quote_valid_until' => now()->addDay(),
+        ]);
+
+        $this->post(route('booking-quotes.accept', $bookingRequest->quote_acceptance_token))
+            ->assertUnprocessable();
+
+        $this->assertSame(BookingStatus::Option, $bookingRequest->refresh()->status);
+        $this->assertNull($bookingRequest->quote_accepted_at);
+    }
+
+    public function test_quote_uses_free_travel_kilometers_and_maximum_distance(): void
+    {
+        $this->createRoles();
+        $user = User::factory()->create();
+        $user->assignRole('entertainer');
+        $entertainer = Entertainer::factory()->create([
+            'user_id' => $user->id,
+            'travel_free_km' => 10,
+            'max_travel_distance_km' => 25,
+        ]);
+        Rate::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'customer_type' => CustomerType::Consumer,
+            'starting_rate_cents' => 5000,
+            'hourly_rate_cents' => 7500,
+            'minimum_hours' => 2,
+            'travel_cost_cents_per_km' => 100,
+        ]);
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'customer_type' => CustomerType::Consumer,
+            'start_time' => '13:00',
+            'end_time' => '15:00',
+            'status' => BookingStatus::New,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('dashboard.booking-requests.quote', $bookingRequest), [
+                'travel_distance_km' => 20,
+                'valid_days' => 14,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(21000, $bookingRequest->refresh()->quote_total_cents);
+        $this->assertSame(1000, $bookingRequest->quote_travel_cents);
+
+        $this->actingAs($user)
+            ->post(route('dashboard.booking-requests.quote', $bookingRequest), [
+                'travel_distance_km' => 26,
+                'valid_days' => 14,
+            ])
+            ->assertSessionHasErrors('travel_distance_km');
+    }
+
+    public function test_accepting_quote_creates_external_invoice_and_payment_checkout_when_integrations_are_enabled(): void
+    {
+        Http::fake([
+            'moneybird.com/*' => Http::response([
+                'id' => 'mb-invoice-1',
+                'invoice_id' => '2026-001',
+                'url' => 'https://moneybird.test/invoices/mb-invoice-1',
+            ]),
+            'api.mollie.com/*' => Http::response([
+                'id' => 'tr_mollie_1',
+                '_links' => ['checkout' => ['href' => 'https://checkout.mollie.test/tr_mollie_1']],
+            ]),
+        ]);
+
+        $entertainer = Entertainer::factory()->create([
+            'accounting_provider' => AccountingProvider::Moneybird,
+            'payment_provider' => PaymentProvider::Mollie,
+            'deposit_percentage' => 50,
+        ]);
+        Rate::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'customer_type' => CustomerType::Consumer,
+            'starting_rate_cents' => 10000,
+            'hourly_rate_cents' => 5000,
+            'minimum_hours' => 2,
+        ]);
+        EntertainerIntegration::query()->create([
+            'entertainer_id' => $entertainer->id,
+            'provider' => IntegrationProvider::Moneybird,
+            'enabled' => true,
+            'credentials' => ['api_token' => 'moneybird-token'],
+            'settings' => ['administration_id' => '123456'],
+        ]);
+        EntertainerIntegration::query()->create([
+            'entertainer_id' => $entertainer->id,
+            'provider' => IntegrationProvider::Mollie,
+            'enabled' => true,
+            'credentials' => ['api_key' => 'mollie-token'],
+        ]);
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'customer_type' => CustomerType::Consumer,
+            'start_time' => '13:00',
+            'end_time' => '15:00',
+        ]);
+
+        app(CreateBookingQuote::class)->handle($bookingRequest, 0, 14);
+
+        $this->post(route('booking-quotes.accept', $bookingRequest->refresh()->quote_acceptance_token))
+            ->assertRedirect();
+
+        $bookingRequest->refresh();
+
+        $this->assertSame('sent_to_moneybird', $bookingRequest->invoice_status);
+        $this->assertSame('2026-001', $bookingRequest->invoice_reference);
+        $this->assertSame('mb-invoice-1', $bookingRequest->invoice_external_id);
+        $this->assertSame('tr_mollie_1', $bookingRequest->payment_external_id);
+        $this->assertSame('https://checkout.mollie.test/tr_mollie_1', $bookingRequest->payment_checkout_url);
+
+        $this->post(route('webhooks.payments', PaymentProvider::Mollie->value), [
+            'id' => 'tr_mollie_1',
+            'status' => 'paid',
+        ])->assertNoContent();
+
+        $this->assertSame('paid', $bookingRequest->refresh()->payment_status);
+        $this->assertSame($bookingRequest->deposit_cents, $bookingRequest->paid_cents);
+    }
+
+    public function test_calendar_sync_creates_google_calendar_event_for_confirmed_booking(): void
+    {
+        Http::fake([
+            'oauth2.googleapis.com/*' => Http::response(['access_token' => 'google-access-token']),
+            'www.googleapis.com/calendar/*' => Http::response(['id' => 'calendar-event-1']),
+        ]);
+
+        $entertainer = Entertainer::factory()->create();
+        EntertainerIntegration::query()->create([
+            'entertainer_id' => $entertainer->id,
+            'provider' => IntegrationProvider::GoogleCalendar,
+            'enabled' => true,
+            'credentials' => [
+                'client_secret' => 'google-secret',
+                'refresh_token' => 'google-refresh-token',
+            ],
+            'settings' => [
+                'client_id' => 'google-client-id',
+                'calendar_id' => 'entertainer@example.com',
+            ],
+        ]);
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'status' => BookingStatus::Confirmed,
+            'calendar_synced_at' => null,
+        ]);
+
+        $this->artisan('calendar:sync-bookings')->assertExitCode(0);
+
+        $bookingRequest->refresh();
+
+        $this->assertSame('calendar-event-1', $bookingRequest->calendar_external_id);
+        $this->assertSame('synced_google_calendar', $bookingRequest->calendar_sync_status);
+        $this->assertNotNull($bookingRequest->calendar_synced_at);
     }
 
     public function test_entertainer_cannot_manage_other_entertainer_booking_request(): void
@@ -1118,6 +1461,9 @@ class PlatformTest extends TestCase
             ->patch(route('dashboard.billing.update'), [
                 'accounting_provider' => AccountingProvider::Moneybird->value,
                 'accounting_notes' => 'Facturen lopen via mijn eigen Moneybird-administratie.',
+                'payment_provider' => PaymentProvider::Mollie->value,
+                'cash_payment_enabled' => '1',
+                'payment_notes' => 'Contant betalen mag op locatie.',
             ])
             ->assertRedirect();
 
@@ -1135,6 +1481,8 @@ class PlatformTest extends TestCase
         $this->assertDatabaseHas('entertainers', [
             'id' => $entertainer->id,
             'accounting_provider' => AccountingProvider::Moneybird->value,
+            'payment_provider' => PaymentProvider::Mollie->value,
+            'cash_payment_enabled' => true,
         ]);
         $this->assertTrue($moneybird->refresh()->enabled);
         $this->assertSame('moneybird-token', $moneybird->credentials['api_token']);
@@ -1161,6 +1509,72 @@ class PlatformTest extends TestCase
         $this->assertSame('entertainer@example.com', $googleCalendar->settings['calendar_id']);
         $this->assertSame('two_way', $googleCalendar->settings['sync_direction']);
         $this->assertTrue($googleCalendar->settings['block_busy_events']);
+    }
+
+    public function test_enabled_payment_integration_creates_checkout(): void
+    {
+        Http::fake([
+            'api.mollie.com/v2/payments' => Http::response([
+                'id' => 'tr_123',
+                '_links' => ['checkout' => ['href' => 'https://payment.example/checkout']],
+            ]),
+        ]);
+
+        $entertainer = Entertainer::factory()->create();
+        $entertainer->integrations()->create([
+            'provider' => IntegrationProvider::Mollie,
+            'enabled' => true,
+            'credentials' => ['api_key' => 'test_mollie_key'],
+        ]);
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'deposit_cents' => 5000,
+            'payment_provider' => PaymentProvider::Mollie->value,
+            'quote_acceptance_token' => 'quote-token',
+        ]);
+
+        app(PaymentCheckoutService::class)->createCheckout($bookingRequest);
+
+        $bookingRequest->refresh();
+
+        $this->assertSame('tr_123', $bookingRequest->payment_external_id);
+        $this->assertSame('https://payment.example/checkout', $bookingRequest->payment_checkout_url);
+        $this->assertNotNull($bookingRequest->payment_checkout_created_at);
+        Http::assertSentCount(1);
+    }
+
+    public function test_enabled_invoice_integration_creates_external_invoice(): void
+    {
+        Http::fake([
+            'moneybird.com/api/v2/*/sales_invoices.json' => Http::response([
+                'id' => 'invoice-123',
+                'invoice_id' => 'MB-2026-001',
+                'url' => 'https://moneybird.example/invoices/invoice-123',
+            ]),
+        ]);
+
+        $entertainer = Entertainer::factory()->create();
+        $entertainer->integrations()->create([
+            'provider' => IntegrationProvider::Moneybird,
+            'enabled' => true,
+            'credentials' => ['api_token' => 'moneybird-token'],
+            'settings' => ['administration_id' => '123456', 'workflow_id' => 'workflow-1'],
+        ]);
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'invoice_provider' => AccountingProvider::Moneybird->value,
+            'quote_total_cents' => 25000,
+        ]);
+
+        app(InvoiceIntegrationService::class)->createInvoiceInstruction($bookingRequest);
+
+        $bookingRequest->refresh();
+
+        $this->assertSame('sent_to_moneybird', $bookingRequest->invoice_status);
+        $this->assertSame('MB-2026-001', $bookingRequest->invoice_reference);
+        $this->assertSame('invoice-123', $bookingRequest->invoice_external_id);
+        $this->assertSame('https://moneybird.example/invoices/invoice-123', $bookingRequest->invoice_url);
+        Http::assertSentCount(1);
     }
 
     public function test_entertainer_can_manage_own_availability(): void
@@ -1268,6 +1682,8 @@ class PlatformTest extends TestCase
                 'city' => 'Amsterdam',
                 'region' => 'Noord-Holland',
                 'working_radius_km' => 60,
+                'travel_free_km' => 15,
+                'max_travel_distance_km' => 80,
                 'profile_photo' => UploadedFile::fake()->image('profile.jpg'),
                 'gallery_photos' => [
                     UploadedFile::fake()->image('gallery-1.jpg'),
@@ -1283,6 +1699,8 @@ class PlatformTest extends TestCase
         $this->assertSame(['Kinderfeestje', 'School'], $entertainer->event_types);
         $this->assertSame(['Nederlands', 'Engels'], $entertainer->languages);
         $this->assertSame(90, $entertainer->performance_duration_minutes);
+        $this->assertSame(15, $entertainer->travel_free_km);
+        $this->assertSame(80, $entertainer->max_travel_distance_km);
         $this->assertCount(2, $entertainer->gallery_photo_paths);
         Storage::disk('public')->assertExists($entertainer->profile_photo_path);
         Storage::disk('public')->assertExists($entertainer->gallery_photo_paths[0]);
@@ -1310,6 +1728,8 @@ class PlatformTest extends TestCase
                 'city' => $entertainer->city,
                 'region' => $entertainer->region,
                 'working_radius_km' => $entertainer->working_radius_km,
+                'travel_free_km' => $entertainer->travel_free_km,
+                'max_travel_distance_km' => $entertainer->max_travel_distance_km,
                 'gallery_photos' => [
                     UploadedFile::fake()->image('gallery-12.jpg'),
                     UploadedFile::fake()->image('gallery-13.jpg'),
@@ -1449,6 +1869,23 @@ class PlatformTest extends TestCase
             ->assertSee('Populaire skills zonder genoeg beschikbaar aanbod');
     }
 
+    public function test_confirmed_booking_reminder_uses_event_tomorrow_flag_without_quote_acceptance_timestamp(): void
+    {
+        Mail::fake();
+
+        $bookingRequest = BookingRequest::factory()->create([
+            'status' => BookingStatus::Confirmed,
+            'event_date' => today()->addDay()->toDateString(),
+            'quote_accepted_at' => null,
+            'reminder_flags' => null,
+        ]);
+
+        $this->artisan('bookings:send-reminders')->assertSuccessful();
+
+        $this->assertTrue($bookingRequest->refresh()->reminder_flags['event_tomorrow'] ?? false);
+        $this->assertFalse($bookingRequest->reminder_flags['quote_expiring'] ?? false);
+    }
+
     public function test_review_link_is_sent_after_confirmed_booking_has_finished(): void
     {
         Mail::fake();
@@ -1472,9 +1909,42 @@ class PlatformTest extends TestCase
         Mail::assertSent(ReviewRequestMail::class, fn (ReviewRequestMail $mail): bool => $mail->review->is($review));
     }
 
+    public function test_review_link_is_not_sent_for_already_submitted_review(): void
+    {
+        Mail::fake();
+
+        $entertainer = Entertainer::factory()->create(['active' => true]);
+        $bookingRequest = BookingRequest::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'status' => BookingStatus::Confirmed,
+            'event_date' => now()->subDay()->toDateString(),
+            'email' => 'marieke@example.com',
+            'name' => 'Marieke Jansen',
+        ]);
+        $review = Review::factory()->create([
+            'booking_request_id' => $bookingRequest->id,
+            'entertainer_id' => $entertainer->id,
+            'customer_email' => 'marieke@example.com',
+            'submitted_at' => now(),
+            'link_sent_at' => null,
+        ]);
+
+        $this->artisan('reviews:send-links')->assertSuccessful();
+
+        Mail::assertNothingSent();
+        $this->assertNull($review->refresh()->link_sent_at);
+    }
+
     public function test_customer_can_submit_review_from_token_link(): void
     {
+        Mail::fake();
+        $this->createRoles();
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $admin->assignRole('admin');
+        $entertainerUser = User::factory()->create(['email' => 'entertainer@example.com']);
+        $entertainer = Entertainer::factory()->create(['user_id' => $entertainerUser->id]);
         $review = Review::factory()->create([
+            'entertainer_id' => $entertainer->id,
             'status' => ReviewStatus::Pending,
             'submitted_at' => null,
             'rating' => null,
@@ -1498,6 +1968,49 @@ class PlatformTest extends TestCase
             'status' => ReviewStatus::Pending->value,
         ]);
         $this->assertNotNull($review->refresh()->submitted_at);
+        Mail::assertSentCount(2);
+    }
+
+    public function test_review_token_expires(): void
+    {
+        $review = Review::factory()->create([
+            'token_expires_at' => now()->subMinute(),
+            'submitted_at' => null,
+        ]);
+
+        $this->get(route('reviews.create', $review->token))->assertGone();
+        $this->post(route('reviews.store', $review->token), [
+            'rating' => 5,
+            'body' => 'Deze review komt te laat binnen en mag niet meer worden opgeslagen.',
+        ])->assertGone();
+    }
+
+    public function test_registration_sends_email_verification_notification(): void
+    {
+        Notification::fake();
+
+        $this->post(route('register'), [
+            'account_type' => 'klant',
+            'name' => 'Nieuwe Klant',
+            'email' => 'nieuwe-klant@example.com',
+            'password' => 'veilig-wachtwoord',
+            'password_confirmation' => 'veilig-wachtwoord',
+        ])->assertRedirect(route('verification.notice'));
+
+        $user = User::query()->where('email', 'nieuwe-klant@example.com')->firstOrFail();
+
+        Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_password_reset_link_can_be_requested(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'reset@example.com']);
+
+        $this->post(route('password.email'), ['email' => 'reset@example.com'])
+            ->assertSessionHas('status');
+
+        Notification::assertSentTo($user, ResetPassword::class);
     }
 
     public function test_only_approved_published_reviews_are_visible_on_entertainer_profile(): void
@@ -1528,6 +2041,32 @@ class PlatformTest extends TestCase
             ->assertDontSee('Nog niet zichtbaar');
     }
 
+    public function test_entertainer_rating_is_cleared_when_last_approved_review_is_unpublished(): void
+    {
+        $entertainer = Entertainer::factory()->create([
+            'rating' => null,
+            'reviews_count' => 0,
+        ]);
+        $review = Review::factory()->create([
+            'entertainer_id' => $entertainer->id,
+            'rating' => 5,
+            'status' => ReviewStatus::Approved,
+            'submitted_at' => now()->subDay(),
+            'published_at' => now(),
+        ]);
+
+        $this->assertSame(1, $entertainer->refresh()->reviews_count);
+        $this->assertSame('5.0', $entertainer->rating);
+
+        $review->update([
+            'status' => ReviewStatus::Pending,
+            'published_at' => null,
+        ]);
+
+        $this->assertSame(0, $entertainer->refresh()->reviews_count);
+        $this->assertNull($entertainer->rating);
+    }
+
     public function test_general_request_scores_matches_and_blocks_outside_working_area(): void
     {
         $schminker = Skill::factory()->create(['name' => 'Schminker', 'slug' => 'schminker']);
@@ -1536,6 +2075,7 @@ class PlatformTest extends TestCase
             'city' => 'Utrecht',
             'region' => 'Utrecht',
             'working_radius_km' => 60,
+            'max_travel_distance_km' => 60,
             'rating' => 4.9,
             'reviews_count' => 20,
         ]);
@@ -1543,7 +2083,8 @@ class PlatformTest extends TestCase
             'name' => 'Amsterdamse Artiest',
             'city' => 'Amsterdam',
             'region' => 'Noord-Holland',
-            'working_radius_km' => 10,
+            'working_radius_km' => 90,
+            'max_travel_distance_km' => 10,
         ]);
 
         $this->post(route('booking-requests.general.store'), $this->bookingRequestPayload([

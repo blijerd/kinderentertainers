@@ -59,6 +59,8 @@ class EntertainerForm
                 TextInput::make('city')->label('Woonplaats')->required()->maxLength(255),
                 TextInput::make('region')->label('Regio/provincie')->required()->maxLength(255),
                 TextInput::make('working_radius_km')->label('Werkgebied in km')->numeric()->required(),
+                TextInput::make('travel_free_km')->label('Vrije reiskilometers')->numeric()->minValue(0)->required(),
+                TextInput::make('max_travel_distance_km')->label('Maximale reisafstand in km')->numeric()->minValue(1),
                 Select::make('accounting_provider')
                     ->label('Boekhoudpakket')
                     ->options(collect(AccountingProvider::cases())->mapWithKeys(fn (AccountingProvider $provider): array => [$provider->value => $provider->label()])->all())

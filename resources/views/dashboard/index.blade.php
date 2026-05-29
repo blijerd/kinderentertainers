@@ -32,6 +32,23 @@
                     <div class="h-full bg-brand-teal" style="width: {{ $profileQualityScore }}%"></div>
                 </div>
             </div>
+            @if (! $entertainer->active)
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+                    <span>
+                        @if ($entertainer->publication_requested_at)
+                            Publicatie aangevraagd op {{ $entertainer->publication_requested_at->format('d-m-Y H:i') }}.
+                        @else
+                            Je profiel is nog niet publiek zichtbaar.
+                        @endif
+                    </span>
+                    @if (! $entertainer->publication_requested_at)
+                        <form method="POST" action="{{ route('dashboard.profile.request-publication') }}">
+                            @csrf
+                            <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Publicatie aanvragen</button>
+                        </form>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <div class="mt-8 flex flex-wrap gap-2" data-dashboard-tabs>
@@ -80,6 +97,16 @@
                         <span class="text-sm font-medium">Werkgebied in km</span>
                         <input name="working_radius_km" type="number" min="1" max="500" value="{{ old('working_radius_km', $entertainer->working_radius_km) }}" required class="w-full rounded-md border-slate-300 text-sm">
                         @error('working_radius_km') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
+                    </label>
+                    <label class="space-y-1">
+                        <span class="text-sm font-medium">Vrije reiskilometers</span>
+                        <input name="travel_free_km" type="number" min="0" max="500" value="{{ old('travel_free_km', $entertainer->travel_free_km) }}" required class="w-full rounded-md border-slate-300 text-sm">
+                        @error('travel_free_km') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
+                    </label>
+                    <label class="space-y-1">
+                        <span class="text-sm font-medium">Maximale reisafstand in km</span>
+                        <input name="max_travel_distance_km" type="number" min="1" max="500" value="{{ old('max_travel_distance_km', $entertainer->max_travel_distance_km) }}" class="w-full rounded-md border-slate-300 text-sm">
+                        @error('max_travel_distance_km') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </label>
                     <label class="space-y-1 md:col-span-2">
                         <span class="text-sm font-medium">Korte introductie</span>
@@ -134,11 +161,13 @@
                     <label class="space-y-1 md:col-span-2">
                         <span class="text-sm font-medium">Pakketten</span>
                         <textarea name="packages" rows="4" class="w-full rounded-md border-slate-300 text-sm" placeholder="Naam | prijs | omschrijving">{{ old('packages', collect($entertainer->packages ?? [])->map(fn ($item) => trim(($item['name'] ?? '').' | '.(($item['price_cents'] ?? null) !== null ? number_format($item['price_cents'] / 100, 2, ',', '.') : '').' | '.($item['description'] ?? '')))->implode("\n")) }}</textarea>
+                        <span class="text-xs text-slate-500">Een pakket per regel, bijvoorbeeld: Basisfeest | 175 | 60 minuten entertainment.</span>
                         @error('packages') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </label>
                     <label class="space-y-1 md:col-span-2">
                         <span class="text-sm font-medium">Extras</span>
                         <textarea name="extras" rows="4" class="w-full rounded-md border-slate-300 text-sm" placeholder="Naam | prijs | omschrijving">{{ old('extras', collect($entertainer->extras ?? [])->map(fn ($item) => trim(($item['name'] ?? '').' | '.(($item['price_cents'] ?? null) !== null ? number_format($item['price_cents'] / 100, 2, ',', '.') : '').' | '.($item['description'] ?? '')))->implode("\n")) }}</textarea>
+                        <span class="text-xs text-slate-500">Een extra per regel, bijvoorbeeld: Schminken | 50 | Voor maximaal 10 kinderen.</span>
                         @error('extras') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </label>
                     <label class="space-y-1">
@@ -196,7 +225,7 @@
                     @method('PATCH')
                     <div class="md:col-span-2">
                         <h2 class="text-lg font-bold text-brand-ink dark:text-white">Facturatie</h2>
-                        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Je factureert zelf: via een koppeling hieronder of handmatig buiten het platform.</p>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Je factureert altijd zelf. Kies je eigen boekhoudpakket, betaalprovider en of klanten contant bij jou mogen betalen.</p>
                     </div>
                     <label class="space-y-1">
                         <span class="text-sm font-medium">Boekhoudpakket</span>
@@ -207,10 +236,28 @@
                         </select>
                         @error('accounting_provider') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </label>
+                    <label class="space-y-1">
+                        <span class="text-sm font-medium">Betaalprovider</span>
+                        <select name="payment_provider" required class="w-full rounded-md border-slate-300 text-sm">
+                            @foreach (\App\Enums\PaymentProvider::cases() as $provider)
+                                <option value="{{ $provider->value }}" @selected($entertainer->payment_provider === $provider)>{{ $provider->label() }}</option>
+                            @endforeach
+                        </select>
+                        @error('payment_provider') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
+                    </label>
+                    <label class="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm md:col-span-2 dark:border-slate-700">
+                        <input type="checkbox" name="cash_payment_enabled" value="1" @checked($entertainer->cash_payment_enabled) class="rounded border-slate-300">
+                        Klanten mogen contant bij mij betalen
+                    </label>
                     <label class="space-y-1 md:col-span-2">
                         <span class="text-sm font-medium">Facturatienotities</span>
                         <textarea name="accounting_notes" rows="3" class="w-full rounded-md border-slate-300 text-sm" placeholder="Bijvoorbeeld: ik factureer handmatig, of ik gebruik een extern pakket dat nog niet gekoppeld is.">{{ old('accounting_notes', $entertainer->accounting_notes) }}</textarea>
                         @error('accounting_notes') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
+                    </label>
+                    <label class="space-y-1 md:col-span-2">
+                        <span class="text-sm font-medium">Betaalnotities</span>
+                        <textarea name="payment_notes" rows="3" class="w-full rounded-md border-slate-300 text-sm" placeholder="Bijvoorbeeld: ik stuur na akkoord zelf een betaalverzoek, of contant betalen is alleen mogelijk op locatie.">{{ old('payment_notes', $entertainer->payment_notes) }}</textarea>
+                        @error('payment_notes') <span class="text-sm text-red-700">{{ $message }}</span> @enderror
                     </label>
                     <button class="brand-button md:col-span-2">Facturatie opslaan</button>
                 </form>
@@ -227,10 +274,10 @@
                                     <div>
                                         <h3 class="font-bold">{{ $integration->provider->label() }}</h3>
                                         <p class="text-xs text-slate-500 dark:text-slate-400">
-                                            @if ($integration->provider === \App\Enums\IntegrationProvider::Moneybird)
-                                                Boekhouding en factuurreferenties.
-                                            @elseif ($integration->provider === \App\Enums\IntegrationProvider::Mollie)
-                                                Betaallinks en betaalstatussen.
+                                            @if ($integration->provider->category() === 'accounting')
+                                                Eigen facturen, klantgegevens en factuurreferenties.
+                                            @elseif ($integration->provider->category() === 'payment')
+                                                Eigen betaalverzoeken en betaalstatussen.
                                             @elseif ($integration->provider === \App\Enums\IntegrationProvider::Postmark)
                                                 Transactionele e-mail.
                                             @elseif ($integration->provider === \App\Enums\IntegrationProvider::Pushover)
@@ -252,9 +299,34 @@
                                     <input name="api_token" type="password" autocomplete="off" placeholder="API-token" class="rounded-md border-slate-300 text-sm">
                                     <input name="administration_id" value="{{ old('administration_id', $integration->settings['administration_id'] ?? '') }}" placeholder="Administratie-ID" class="rounded-md border-slate-300 text-sm">
                                     <input name="workflow_id" value="{{ old('workflow_id', $integration->settings['workflow_id'] ?? '') }}" placeholder="Workflow-ID" class="rounded-md border-slate-300 text-sm">
+                                @elseif (in_array($integration->provider, [\App\Enums\IntegrationProvider::Exact, \App\Enums\IntegrationProvider::SnelStart, \App\Enums\IntegrationProvider::Twinfield, \App\Enums\IntegrationProvider::Visma], true))
+                                    <input name="client_id" value="{{ old('client_id', $integration->settings['client_id'] ?? '') }}" placeholder="OAuth client-ID" class="rounded-md border-slate-300 text-sm">
+                                    <input name="client_secret" type="password" autocomplete="off" placeholder="OAuth client secret" class="rounded-md border-slate-300 text-sm">
+                                    <input name="refresh_token" type="password" autocomplete="off" placeholder="Refresh token" class="rounded-md border-slate-300 text-sm">
+                                    <input name="administration_id" value="{{ old('administration_id', $integration->settings['administration_id'] ?? '') }}" placeholder="Administratie-ID" class="rounded-md border-slate-300 text-sm">
+                                @elseif ($integration->provider === \App\Enums\IntegrationProvider::EBoekhouden)
+                                    <input name="username" value="{{ old('username', $integration->settings['username'] ?? '') }}" placeholder="Gebruikersnaam" class="rounded-md border-slate-300 text-sm">
+                                    <input name="security_code_1" type="password" autocomplete="off" placeholder="Beveiligingscode 1" class="rounded-md border-slate-300 text-sm">
+                                    <input name="security_code_2" type="password" autocomplete="off" placeholder="Beveiligingscode 2" class="rounded-md border-slate-300 text-sm">
+                                @elseif (in_array($integration->provider, [\App\Enums\IntegrationProvider::Jortt, \App\Enums\IntegrationProvider::Rompslomp], true))
+                                    <input name="api_token" type="password" autocomplete="off" placeholder="API-token" class="rounded-md border-slate-300 text-sm">
+                                    <input name="administration_id" value="{{ old('administration_id', $integration->settings['administration_id'] ?? '') }}" placeholder="Administratie-ID" class="rounded-md border-slate-300 text-sm">
                                 @elseif ($integration->provider === \App\Enums\IntegrationProvider::Mollie)
                                     <input name="api_key" type="password" autocomplete="off" placeholder="API-key" class="rounded-md border-slate-300 text-sm">
                                     <input name="profile_id" value="{{ old('profile_id', $integration->settings['profile_id'] ?? '') }}" placeholder="Profiel-ID" class="rounded-md border-slate-300 text-sm">
+                                @elseif ($integration->provider === \App\Enums\IntegrationProvider::Stripe)
+                                    <input name="secret_key" type="password" autocomplete="off" placeholder="Secret key" class="rounded-md border-slate-300 text-sm">
+                                    <input name="webhook_secret" type="password" autocomplete="off" placeholder="Webhook secret" class="rounded-md border-slate-300 text-sm">
+                                @elseif ($integration->provider === \App\Enums\IntegrationProvider::PayPal)
+                                    <input name="client_id" value="{{ old('client_id', $integration->settings['client_id'] ?? '') }}" placeholder="Client-ID" class="rounded-md border-slate-300 text-sm">
+                                    <input name="client_secret" type="password" autocomplete="off" placeholder="Client secret" class="rounded-md border-slate-300 text-sm">
+                                    <input name="merchant_id" value="{{ old('merchant_id', $integration->settings['merchant_id'] ?? '') }}" placeholder="Merchant-ID" class="rounded-md border-slate-300 text-sm">
+                                @elseif ($integration->provider === \App\Enums\IntegrationProvider::PayNl)
+                                    <input name="api_token" type="password" autocomplete="off" placeholder="API-token" class="rounded-md border-slate-300 text-sm">
+                                    <input name="service_id" value="{{ old('service_id', $integration->settings['service_id'] ?? '') }}" placeholder="Service-ID" class="rounded-md border-slate-300 text-sm">
+                                @elseif ($integration->provider === \App\Enums\IntegrationProvider::Rabobank)
+                                    <input name="refresh_token" type="password" autocomplete="off" placeholder="Refresh token" class="rounded-md border-slate-300 text-sm">
+                                    <input name="merchant_id" value="{{ old('merchant_id', $integration->settings['merchant_id'] ?? '') }}" placeholder="Merchant-ID" class="rounded-md border-slate-300 text-sm">
                                 @elseif ($integration->provider === \App\Enums\IntegrationProvider::Postmark)
                                     <input name="server_token" type="password" autocomplete="off" placeholder="Server-token" class="rounded-md border-slate-300 text-sm">
                                     <input name="message_stream" value="{{ old('message_stream', $integration->settings['message_stream'] ?? '') }}" placeholder="Message stream" class="rounded-md border-slate-300 text-sm">
@@ -350,7 +422,7 @@
                                 <input name="end_time" type="time" value="{{ $rule->end_time->format('H:i') }}" required class="rounded-md border-slate-300 text-sm">
                                 <input name="internal_note" value="{{ $rule->internal_note }}" placeholder="Notitie" class="rounded-md border-slate-300 text-sm">
                                 <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
-                                <button form="delete-availability-rule-{{ $rule->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700">Verwijderen</button>
+                                <button form="delete-availability-rule-{{ $rule->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onclick="return confirm('Weet je zeker dat je deze herhaling wilt verwijderen?')">Verwijderen</button>
                             </form>
                             <form id="delete-availability-rule-{{ $rule->id }}" method="POST" action="{{ route('dashboard.availability-rules.destroy', $rule) }}" class="hidden">
                                 @csrf
@@ -390,7 +462,7 @@
                                     @endforeach
                                 </select>
                                 <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
-                                <button form="delete-availability-{{ $availability->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700">Verwijderen</button>
+                                <button form="delete-availability-{{ $availability->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onclick="return confirm('Weet je zeker dat je deze beschikbaarheid wilt verwijderen?')">Verwijderen</button>
                             </form>
                             <form id="delete-availability-{{ $availability->id }}" method="POST" action="{{ route('dashboard.availabilities.destroy', $availability) }}" class="hidden">
                                 @csrf
@@ -441,7 +513,7 @@
                                 </label>
                                 <div class="grid grid-cols-2 gap-2">
                                     <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
-                                    <button form="delete-rate-{{ $rate->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700">Verwijderen</button>
+                                    <button form="delete-rate-{{ $rate->id }}" class="rounded-md border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onclick="return confirm('Weet je zeker dat je dit tarief wilt verwijderen?')">Verwijderen</button>
                                 </div>
                             </form>
                             <form id="delete-rate-{{ $rate->id }}" method="POST" action="{{ route('dashboard.rates.destroy', $rate) }}" class="hidden">
@@ -534,12 +606,21 @@
                                         @if ($bookingRequest->deposit_cents)
                                             <p class="mt-1">Aanbetaling: € {{ number_format($bookingRequest->deposit_cents / 100, 2, ',', '.') }} · betaalstatus {{ $bookingRequest->payment_status }}</p>
                                         @endif
+                                        @if ($bookingRequest->quote_accepted_at)
+                                            <p class="mt-1">
+                                                Factuur: {{ $bookingRequest->invoice_status === 'to_be_invoiced_by_entertainer' ? 'door jou te versturen' : $bookingRequest->invoice_status }}.
+                                                Betaalprovider: {{ $bookingRequest->payment_provider ? \App\Enums\PaymentProvider::tryFrom($bookingRequest->payment_provider)?->label() ?? $bookingRequest->payment_provider : 'nog niet gekozen' }}.
+                                                @if ($bookingRequest->cash_payment_allowed)
+                                                    Contant betalen toegestaan.
+                                                @endif
+                                            </p>
+                                        @endif
                                         <a href="{{ route('booking-quotes.show', $bookingRequest->quote_acceptance_token) }}" class="mt-2 inline-block break-all font-semibold text-brand-ink">
                                             {{ route('booking-quotes.show', $bookingRequest->quote_acceptance_token) }}
                                         </a>
                                     </div>
                                 @endif
-                                <form method="POST" action="{{ route('dashboard.booking-requests.status', $bookingRequest) }}" class="mt-3 flex gap-2">
+                                <form method="POST" action="{{ route('dashboard.booking-requests.status', $bookingRequest) }}" class="mt-3 grid gap-2 sm:grid-cols-[1fr_auto_1fr]">
                                     @csrf
                                     @method('PATCH')
                                     <select name="status" class="min-w-0 flex-1 rounded-md border-slate-300 text-sm">
@@ -549,7 +630,7 @@
                                         <option value="geannuleerd" @selected($bookingRequest->status === \App\Enums\BookingStatus::Cancelled)>Geannuleerd</option>
                                     </select>
                                     <button class="rounded-md bg-brand-ink px-3 py-2 text-sm font-bold text-white">Opslaan</button>
-                                    <input name="cancellation_reason" class="min-w-0 flex-1 rounded-md border-slate-300 text-sm" placeholder="Reden bij annulering">
+                                    <input name="cancellation_reason" class="min-w-0 flex-1 rounded-md border-slate-300 text-sm" placeholder="Reden bij annulering of afwijzing">
                                 </form>
                                 <form method="POST" action="{{ route('dashboard.booking-requests.quote', $bookingRequest) }}" class="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                                     @csrf

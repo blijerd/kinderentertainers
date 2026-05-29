@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AccountingProvider;
+use App\Enums\PaymentProvider;
 use App\Enums\ReviewStatus;
 use Database\Factories\EntertainerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -39,12 +40,20 @@ use Illuminate\Support\Facades\Storage;
     'city',
     'region',
     'working_radius_km',
+    'travel_free_km',
+    'max_travel_distance_km',
     'accounting_provider',
     'accounting_notes',
+    'payment_provider',
+    'cash_payment_enabled',
+    'payment_notes',
     'active',
     'featured',
     'profile_complete',
     'profile_quality_score',
+    'publication_requested_at',
+    'publication_reviewed_at',
+    'publication_review_note',
     'average_response_minutes',
 ])]
 class Entertainer extends Model
@@ -167,12 +176,18 @@ class Entertainer extends Model
             'rating' => 'decimal:1',
             'reviews_count' => 'integer',
             'working_radius_km' => 'integer',
+            'travel_free_km' => 'integer',
+            'max_travel_distance_km' => 'integer',
             'performance_duration_minutes' => 'integer',
             'setup_time_minutes' => 'integer',
             'deposit_percentage' => 'integer',
             'profile_quality_score' => 'integer',
+            'publication_requested_at' => 'datetime',
+            'publication_reviewed_at' => 'datetime',
             'average_response_minutes' => 'integer',
             'accounting_provider' => AccountingProvider::class,
+            'payment_provider' => PaymentProvider::class,
+            'cash_payment_enabled' => 'boolean',
         ];
     }
 }

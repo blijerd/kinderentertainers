@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ReviewStatus;
 use App\Models\Review;
+use App\Services\BookingWorkflowNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,16 +18,27 @@ class ReviewController extends Controller
             ->where('token', $token)
             ->firstOrFail();
 
+        abort_if($review->token_expires_at?->isPast(), 410);
+
         return view('reviews.create', compact('review'));
     }
 
-    public function store(Request $request, string $token): RedirectResponse
+    public function store(Request $request, string $token, BookingWorkflowNotificationService $notifications): RedirectResponse
     {
         $review = Review::query()
             ->where('token', $token)
             ->firstOrFail();
 
+        abort_if($review->token_expires_at?->isPast(), 410);
         abort_if($review->isSubmitted(), 409);
+        abort_if(
+            Review::query()
+                ->where('booking_request_id', $review->booking_request_id)
+                ->whereNotNull('submitted_at')
+                ->whereKeyNot($review->id)
+                ->exists(),
+            409,
+        );
 
         $validated = $request->validate([
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
@@ -43,7 +55,11 @@ class ReviewController extends Controller
             'status' => ReviewStatus::Pending,
             'submitted_at' => now(),
             'published_at' => null,
+            'submission_ip' => $request->ip(),
+            'submission_user_agent' => $request->userAgent(),
         ]);
+
+        $notifications->notifyReviewSubmitted($review->refresh());
 
         return redirect()->route('reviews.thanks');
     }

@@ -31,10 +31,37 @@ class RegionDistanceEstimator
         'zaandam' => ['lat' => 52.4420, 'lng' => 4.8292],
     ];
 
+    /**
+     * @var array<string, string>
+     */
+    private array $postcodePrefixes = [
+        '10' => 'amsterdam',
+        '11' => 'zaandam',
+        '20' => 'haarlem',
+        '21' => 'haarlem',
+        '23' => 'leiden',
+        '25' => 'den haag',
+        '26' => 'den haag',
+        '30' => 'rotterdam',
+        '31' => 'rotterdam',
+        '33' => 'dordrecht',
+        '35' => 'utrecht',
+        '38' => 'amersfoort',
+        '50' => 'tilburg',
+        '52' => 'den bosch',
+        '56' => 'eindhoven',
+        '65' => 'nijmegen',
+        '68' => 'arnhem',
+        '73' => 'apeldoorn',
+        '75' => 'enschede',
+        '80' => 'zwolle',
+        '97' => 'groningen',
+    ];
+
     public function distanceKm(?string $fromCity, ?string $toCity, ?string $fromRegion = null, ?string $toRegion = null): ?float
     {
-        $from = $this->coordinates[$this->normalize($fromCity)] ?? null;
-        $to = $this->coordinates[$this->normalize($toCity)] ?? null;
+        $from = $this->coordinates[$this->normalizeLocation($fromCity)] ?? null;
+        $to = $this->coordinates[$this->normalizeLocation($toCity)] ?? null;
 
         if ($from && $to) {
             return round($this->haversine($from['lat'], $from['lng'], $to['lat'], $to['lng']) * 1.2, 1);
@@ -59,6 +86,14 @@ class RegionDistanceEstimator
     private function normalize(?string $value): string
     {
         return trim(mb_strtolower((string) $value));
+    }
+
+    private function normalizeLocation(?string $value): string
+    {
+        $normalized = $this->normalize($value);
+        $prefix = substr(preg_replace('/\D/', '', $normalized), 0, 2);
+
+        return $this->postcodePrefixes[$prefix] ?? $normalized;
     }
 
     private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float

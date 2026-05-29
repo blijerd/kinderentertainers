@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'integrations' => [
+        'live_health_checks' => env('INTEGRATION_LIVE_HEALTH_CHECKS', false),
+    ],
+
 ];

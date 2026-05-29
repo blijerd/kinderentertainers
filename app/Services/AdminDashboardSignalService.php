@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\BookingStatus;
 use App\Models\BookingRequest;
 use App\Models\Entertainer;
+use App\Models\Review;
 use App\Models\Skill;
 use Illuminate\Support\Collection;
 
@@ -47,6 +48,32 @@ class AdminDashboardSignalService
                     ->orWhereNull('audience_age_range')
                     ->orWhereNull('performance_duration_minutes');
             })
+            ->count();
+    }
+
+    public function pendingReviewsCount(): int
+    {
+        return Review::query()
+            ->where('status', 'pending')
+            ->whereNotNull('submitted_at')
+            ->count();
+    }
+
+    public function failedCalendarSyncsCount(): int
+    {
+        return BookingRequest::query()
+            ->whereNotNull('calendar_sync_status')
+            ->where('calendar_sync_status', 'like', 'sync_failed%')
+            ->count();
+    }
+
+    public function overdueDepositsCount(): int
+    {
+        return BookingRequest::query()
+            ->where('status', BookingStatus::Confirmed->value)
+            ->where('payment_status', 'deposit_due')
+            ->whereNotNull('payment_due_at')
+            ->where('payment_due_at', '<', now())
             ->count();
     }
 

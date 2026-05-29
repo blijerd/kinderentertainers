@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\BookingRequests\BookingRequestResource;
 use App\Filament\Resources\Entertainers\EntertainerResource;
 use App\Filament\Resources\Rates\RateResource;
+use App\Filament\Resources\Reviews\ReviewResource;
 use App\Filament\Resources\Skills\SkillResource;
 use App\Services\AdminDashboardSignalService;
 use Filament\Widgets\Widget;
@@ -15,7 +16,7 @@ class AdminSignalListWidget extends Widget
 
     protected static bool $isLazy = false;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected string $view = 'filament.widgets.admin-signal-list-widget';
 
@@ -59,6 +60,30 @@ class AdminSignalListWidget extends Widget
                     'color' => 'gray',
                     'url' => EntertainerResource::getUrl('index'),
                     'action' => 'Profielen nalopen',
+                ],
+                [
+                    'label' => 'Reviews te modereren',
+                    'count' => $signals->pendingReviewsCount(),
+                    'description' => 'Ingestuurde reviews die nog wachten op controle en publicatie.',
+                    'color' => 'info',
+                    'url' => ReviewResource::getUrl('index'),
+                    'action' => 'Reviews openen',
+                ],
+                [
+                    'label' => 'Kalendersync mislukt',
+                    'count' => $signals->failedCalendarSyncsCount(),
+                    'description' => 'Boekingen waarbij externe agendasynchronisatie fout liep.',
+                    'color' => 'danger',
+                    'url' => BookingRequestResource::getUrl('index'),
+                    'action' => 'Syncs bekijken',
+                ],
+                [
+                    'label' => 'Aanbetalingen verlopen',
+                    'count' => $signals->overdueDepositsCount(),
+                    'description' => 'Bevestigde boekingen met open aanbetaling na de betaaldatum.',
+                    'color' => 'warning',
+                    'url' => BookingRequestResource::getUrl('index'),
+                    'action' => 'Betalingen opvolgen',
                 ],
             ],
             'underSuppliedSkills' => $signals->underSuppliedPopularSkills(),

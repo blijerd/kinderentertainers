@@ -1,5 +1,5 @@
 <x-layouts.app :title="$entertainer->name">
-    <section class="brand-shell py-10">
+    <section class="brand-shell py-10 lg:py-12">
         <div class="grid gap-8 lg:grid-cols-[1fr_380px]">
             <div>
                 <div class="brand-panel overflow-hidden">
@@ -8,27 +8,33 @@
                     @endif
                     <div class="p-6">
                         <p class="brand-kicker">{{ $entertainer->city }} · {{ $entertainer->region }}</p>
-                        <h1 class="brand-heading mt-2 text-3xl">{{ $entertainer->name }}</h1>
-                        <p class="mt-4 text-lg leading-8 text-slate-700">{{ $entertainer->short_introduction }}</p>
+                        <h1 class="brand-heading mt-2 text-4xl">{{ $entertainer->name }}</h1>
+                        <p class="mt-4 text-lg leading-8 text-slate-700 dark:text-slate-300">{{ $entertainer->short_introduction }}</p>
                         <div class="mt-5 flex flex-wrap gap-2">
                             @foreach ($entertainer->skills as $skill)
                                 <span class="brand-pill text-sm">{{ $skill->name }}</span>
                             @endforeach
                         </div>
+                        <div class="mt-6 flex flex-wrap gap-3">
+                            <a href="{{ route('booking-requests.create', $entertainer) }}" class="brand-button">Aanvraag doen</a>
+                            @if ($entertainer->show_reel_url)
+                                <a href="{{ $entertainer->show_reel_url }}" target="_blank" rel="noopener noreferrer" class="brand-button-secondary">Showreel bekijken</a>
+                            @endif
+                        </div>
                     </div>
                 </div>
 
                 <div class="brand-card mt-6 p-6">
-                    <h2 class="text-xl font-bold text-brand-ink">Over {{ $entertainer->name }}</h2>
-                    <div class="mt-4 whitespace-pre-line leading-7 text-slate-700">{{ $entertainer->bio }}</div>
+                    <h2 class="brand-section-title">Over {{ $entertainer->name }}</h2>
+                    <div class="mt-4 whitespace-pre-line leading-7 text-slate-700 dark:text-slate-300">{{ $entertainer->bio }}</div>
                 </div>
 
                 @if ($entertainer->profileHighlightsList())
                     <div class="brand-card mt-6 p-6">
-                        <h2 class="text-xl font-bold text-brand-ink">Waarom boeken</h2>
+                        <h2 class="brand-section-title">Waarom boeken</h2>
                         <div class="mt-4 grid gap-3 md:grid-cols-2">
                             @foreach ($entertainer->profileHighlightsList() as $highlight)
-                                <div class="rounded-md bg-teal-50 px-4 py-3 text-sm font-semibold text-brand-ink">{{ $highlight }}</div>
+                                <div class="rounded-md bg-brand-mint px-4 py-3 text-sm font-bold text-brand-ink">{{ $highlight }}</div>
                             @endforeach
                         </div>
                     </div>
@@ -44,24 +50,24 @@
 
                 @if ($entertainer->practical_requirements)
                     <div class="brand-card mt-6 p-6">
-                        <h2 class="text-xl font-bold text-brand-ink">Praktisch</h2>
-                        <div class="mt-4 whitespace-pre-line leading-7 text-slate-700">{{ $entertainer->practical_requirements }}</div>
+                        <h2 class="brand-section-title">Praktisch</h2>
+                        <div class="mt-4 whitespace-pre-line leading-7 text-slate-700 dark:text-slate-300">{{ $entertainer->practical_requirements }}</div>
                     </div>
                 @endif
 
                 @if ($entertainer->packages || $entertainer->extras)
                     <div class="brand-card mt-6 p-6">
-                        <h2 class="text-xl font-bold text-brand-ink">Pakketten en extras</h2>
+                        <h2 class="brand-section-title">Pakketten en extras</h2>
                         @if ($entertainer->packages)
                             <div class="mt-4 grid gap-3 md:grid-cols-2">
                                 @foreach ($entertainer->packages as $package)
-                                    <div class="rounded-md border border-slate-200 p-4">
+                                    <div class="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-950">
                                         <p class="font-bold text-brand-ink">{{ $package['name'] ?? 'Pakket' }}</p>
                                         @if (($package['price_cents'] ?? null) !== null)
                                             <p class="mt-1 text-sm font-semibold">€ {{ number_format($package['price_cents'] / 100, 2, ',', '.') }}</p>
                                         @endif
                                         @if ($package['description'] ?? null)
-                                            <p class="mt-2 text-sm text-slate-700">{{ $package['description'] }}</p>
+                                            <p class="mt-2 text-sm text-slate-700 dark:text-slate-300">{{ $package['description'] }}</p>
                                         @endif
                                     </div>
                                 @endforeach
@@ -87,7 +93,7 @@
                         <div class="flex flex-wrap items-end justify-between gap-3">
                             <div>
                                 <p class="brand-kicker">Reviews</p>
-                                <h2 class="text-xl font-bold text-brand-ink">Ervaringen met {{ $entertainer->name }}</h2>
+                                <h2 class="brand-section-title">Ervaringen met {{ $entertainer->name }}</h2>
                             </div>
                             <p class="text-sm font-semibold text-brand-ink">
                                 {{ number_format($entertainer->approvedReviews->avg('rating'), 1, ',', '.') }}/5
@@ -95,7 +101,7 @@
                         </div>
                         <div class="mt-5 space-y-4">
                             @foreach ($entertainer->approvedReviews as $review)
-                                <article class="rounded-md bg-teal-50 p-4">
+                                <article class="rounded-md bg-brand-mint p-4">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <h3 class="font-bold text-brand-ink">{{ $review->title ?: 'Review van '.$review->customer_name }}</h3>
                                         <span class="text-sm font-semibold text-brand-ink">{{ $review->rating }}/5</span>
@@ -109,9 +115,9 @@
                 @endif
             </div>
 
-            <aside class="space-y-5">
+            <aside class="space-y-5 lg:sticky lg:top-24 lg:self-start">
                 <div class="brand-card p-5">
-                    <h2 class="text-lg font-bold text-brand-ink">Profielinformatie</h2>
+                    <h2 class="text-lg font-black text-brand-ink dark:text-white">Profielinformatie</h2>
                     <dl class="mt-4 space-y-3 text-sm">
                         @if ($entertainer->audience_age_range)
                             <div class="flex justify-between gap-4">
@@ -171,10 +177,10 @@
 
                 <livewire:availability-check :entertainer="$entertainer" />
                 <div class="brand-card p-5">
-                    <h2 class="text-lg font-bold text-brand-ink">Tarieven</h2>
+                    <h2 class="text-lg font-black text-brand-ink dark:text-white">Tarieven</h2>
                     <div class="mt-4 space-y-3">
                         @foreach ($entertainer->rates as $rate)
-                            <div class="rounded-md bg-brand-peach p-3">
+                            <div class="rounded-md bg-brand-peach p-3 ring-1 ring-orange-100">
                                 <p class="font-semibold">{{ $rate->customer_type->label() }}</p>
                                 <p class="text-sm text-slate-700">Starttarief EUR {{ number_format($rate->starting_rate_cents / 100, 2, ',', '.') }} · uurtarief EUR {{ number_format($rate->hourly_rate_cents / 100, 2, ',', '.') }}</p>
                             </div>

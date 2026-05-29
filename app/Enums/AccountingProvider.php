@@ -10,6 +10,9 @@ enum AccountingProvider: string
     case EBoekhouden = 'e_boekhouden';
     case SnelStart = 'snelstart';
     case Twinfield = 'twinfield';
+    case Jortt = 'jortt';
+    case Rompslomp = 'rompslomp';
+    case Visma = 'visma';
     case Other = 'other';
 
     public function label(): string
@@ -21,6 +24,9 @@ enum AccountingProvider: string
             self::EBoekhouden => 'e-Boekhouden.nl',
             self::SnelStart => 'SnelStart',
             self::Twinfield => 'Twinfield',
+            self::Jortt => 'Jortt',
+            self::Rompslomp => 'Rompslomp',
+            self::Visma => 'Visma eAccounting',
             self::Other => 'Ander boekhoudpakket',
         };
     }
