@@ -1,0 +1,116 @@
+name: kinderentertainers
+
+x-app-build: &app-build
+  context: .
+  target: app
+  args:
+    INSTALL_DEV: "true"
+
+x-laravel-env: &laravel-env
+  APP_NAME: Kinderentertainers.nl
+  APP_ENV: local
+  APP_KEY: base64:7NDOXqmiWsKng1a05T7A2uw4TkRzBv7Q3rI9jdvRDzk=
+  APP_DEBUG: "true"
+  APP_URL: http://localhost:8080
+  APP_LOCALE: nl
+  APP_FALLBACK_LOCALE: nl
+  APP_FAKER_LOCALE: nl_NL
+  LOG_CHANNEL: stack
+  LOG_STACK: single
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_DATABASE: kinderentertainers
+  DB_USERNAME: kinderentertainers
+  DB_PASSWORD: secret
+  DB_SSLMODE: prefer
+  SESSION_DRIVER: database
+  CACHE_STORE: database
+  QUEUE_CONNECTION: database
+  MAIL_MAILER: log
+  MAIL_FROM_ADDRESS: noreply@kinderentertainers.nl
+  MAIL_FROM_NAME: Kinderentertainers.nl
+  VITE_APP_NAME: Kinderentertainers.nl
+  WAIT_FOR_DB: "true"
+  RUN_STORAGE_LINK: "true"
+
+services:
+  app:
+    build: *app-build
+    environment:
+      <<: *laravel-env
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - app-storage:/var/www/html/storage
+      - app-cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+    ports:
+      - "8080:80"
+    volumes:
+      - app-storage:/var/www/html/storage:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  queue:
+    build: *app-build
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    environment:
+      <<: *laravel-env
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - app-storage:/var/www/html/storage
+      - app-cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  scheduler:
+    build: *app-build
+    command: php artisan schedule:work
+    environment:
+      <<: *laravel-env
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - app-storage:/var/www/html/storage
+      - app-cache:/var/www/html/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kinderentertainers
+      POSTGRES_USER: kinderentertainers
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kinderentertainers -d kinderentertainers"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  app-cache:
+  app-storage:
+  postgres-data:

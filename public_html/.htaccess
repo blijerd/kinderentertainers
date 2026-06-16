@@ -1,3 +1,16 @@
+<IfModule mod_setenvif.c>
+    SetEnvIfNoCase Request_URI "^/build/assets/.+-[A-Za-z0-9_-]{8,}\.(css|js|mjs|woff2?)(\.br|\.gz)?$" hashed_build_asset=1
+    SetEnvIfNoCase Host "^static\.kinderentertainers\.nl$" static_asset_host=1
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always unset Set-Cookie env=static_asset_host
+    Header always set Cache-Control "public, max-age=31536000, immutable" env=hashed_build_asset
+    Header merge Vary "Accept-Encoding" env=hashed_build_asset
+    Header always set Access-Control-Allow-Origin "*" env=hashed_build_asset
+    Header always set Cross-Origin-Resource-Policy "cross-origin" env=hashed_build_asset
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
@@ -17,6 +30,10 @@
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
+
+    # Keep the cookie-free static asset host out of Laravel for the root landing page.
+    RewriteCond %{ENV:static_asset_host} 1
+    RewriteRule ^$ static.kinderentertainers.nl/index.html [L]
 
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d

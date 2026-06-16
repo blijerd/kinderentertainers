@@ -8,6 +8,17 @@ Boekingsplatform voor kinderentertainers. Bezoekers zoeken op skill, regio, besc
 
 `vendor/`, `node_modules`, `.env`, `.DS_Store`, `__MACOSX/` en testcaches horen niet in de repository. Installeer dependencies lokaal:
 
+Vereiste PHP-extensies: `dom`, `mbstring`, `xml`, `xmlwriter`, `json`, `libxml`, `tokenizer` en `pdo_pgsql`.
+Maak voor PostgreSQL eenmalig de lokale databases aan:
+
+```bash
+createuser kinderentertainers
+createdb -O kinderentertainers kinderentertainers
+createdb -O kinderentertainers kinderentertainers_test
+```
+
+Installeer daarna de applicatie:
+
 ```bash
 composer install
 npm install
@@ -18,13 +29,49 @@ npm run build
 php artisan test
 ```
 
-Vereiste PHP-extensies: `dom`, `mbstring`, `xml`, `xmlwriter`, `json`, `libxml`, `tokenizer`.
-
 Gebruik voor lokale ontwikkeling daarna:
 
 ```bash
 composer run dev
 ```
+
+## Docker
+
+Start de volledige lokale stack met PHP-FPM, Nginx, PostgreSQL, queue-worker en scheduler:
+
+```bash
+docker compose up --build
+```
+
+De applicatie is daarna bereikbaar op `http://localhost:8080`. PostgreSQL is vanaf de host bereikbaar op poort `5433` met database `kinderentertainers`, gebruiker `kinderentertainers` en wachtwoord `secret`.
+
+De `app`-container draait migraties automatisch bij het opstarten. Voor demo-data en de demo-logins:
+
+```bash
+docker compose exec app php artisan migrate:fresh --seed
+```
+
+Handige Docker-commando's:
+
+```bash
+docker compose exec app php artisan test
+docker compose exec app php artisan tinker
+docker compose exec app composer test
+docker compose down
+docker compose down -v
+```
+
+Gebruik `docker compose down -v` alleen wanneer ook de lokale PostgreSQL-data en Laravel storage-volumes weg mogen.
+
+## Static asset host
+
+Voor productie kan CSS/JS via het cookie-vrije static-subdomein worden geserveerd:
+
+```env
+ASSET_URL=https://static.kinderentertainers.nl
+```
+
+Laat `static.kinderentertainers.nl` naar dezelfde `public_html/` release wijzen als de hoofdsite. De root van dat subdomein wordt bewust afgehandeld door `public_html/static.kinderentertainers.nl/index.html`, zodat Laravel daar niet hoeft te booten. Zorg dat `/build/assets/*` cross-origin bereikbaar blijft met een lange immutable cache; de meegeleverde Apache/LiteSpeed `.htaccess` en Docker nginx-config zijn hierop voorbereid.
 
 ## Demo-logins
 

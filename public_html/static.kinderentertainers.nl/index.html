@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="nl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, follow">
+    <title>Kinderentertainers.nl</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ke-ink: #10233f;
+            --ke-teal: #0f766e;
+            --ke-coral: #fb7185;
+            --ke-sun: #fbbf24;
+            --ke-cloud: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            min-height: 100%;
+            background: var(--ke-cloud);
+        }
+
+        body {
+            min-height: 100%;
+            margin: 0;
+            color: var(--ke-ink);
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .ke-static-home {
+            display: grid;
+            min-height: 100svh;
+            place-items: center;
+            padding: clamp(1.5rem, 5vw, 4rem);
+            text-align: center;
+        }
+
+        .ke-static-card {
+            display: grid;
+            width: min(100%, 34rem);
+            justify-items: center;
+            gap: 1.25rem;
+        }
+
+        .ke-static-logo {
+            display: block;
+            width: min(76vw, 22rem);
+            height: auto;
+        }
+
+        .ke-static-title {
+            margin: 0;
+            font-size: clamp(1.75rem, 5vw, 3rem);
+            line-height: 1;
+        }
+
+        .ke-static-link {
+            display: inline-flex;
+            min-height: 3rem;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            background: var(--ke-teal);
+            color: white;
+            font-weight: 800;
+            padding: 0.8rem 1.25rem;
+            text-decoration: none;
+        }
+
+        .ke-static-link:focus-visible {
+            outline: 0.2rem solid var(--ke-sun);
+            outline-offset: 0.2rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="ke-static-home">
+        <div class="ke-static-card">
+            <img
+                class="ke-static-logo"
+                src="/brand/logo.svg"
+                width="260"
+                height="80"
+                alt="Kinderentertainers.nl"
+                decoding="async"
+            >
+            <h1 class="ke-static-title">Kinderentertainers.nl</h1>
+            <a class="ke-static-link" href="https://kinderentertainers.nl/">kinderentertainers.nl</a>
+        </div>
+    </main>
+</body>
+</html>
