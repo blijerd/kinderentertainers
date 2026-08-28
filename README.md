@@ -63,6 +63,26 @@ docker compose down -v
 
 Gebruik `docker compose down -v` alleen wanneer ook de lokale PostgreSQL-data en Laravel storage-volumes weg mogen.
 
+## Productie met Docker
+
+Voor hosts die alleen de `Dockerfile` bouwen, gebruikt de laatste stage `production`: die start Nginx, PHP-FPM, de queue-worker en de scheduler via Supervisor in één container en serveert HTTP op poort `80`. Zet in de hostingomgeving minimaal `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://kinderentertainers.nl`, `APP_KEY`, de databasevariabelen, `MAIL_MAILER` (Postmark of SMTP) en bij voorkeur `RUN_OPTIMIZE=true`. Gebruik `RUN_MIGRATIONS=true` alleen wanneer migraties bij deploy automatisch mogen draaien. Zet `SETUP_TOKEN` op een lang geheim; zonder token is `/setup` in productie onbereikbaar.
+
+Bij een Docker Compose-deploy moet de reverse proxy naar de service `web` op poort `80` wijzen. De service `app` is alleen PHP-FPM op poort `9000` en is geen HTTP-backend; als Traefik/Coolify/Dokploy daarheen routeert, krijgt de site geen bruikbare server.
+
+Maak de eerste beheerder zonder demo-data:
+
+```bash
+php artisan app:bootstrap --name="Jouw naam" --email="admin@kinderentertainers.nl" --password="..."
+```
+
+Of open `/setup?token=SETUP_TOKEN` als `SETUP_TOKEN` is gezet. Draai nooit `migrate:fresh --seed` op productie: de seeder maakt lokaal demo-logins met wachtwoord `password`, en slaat die in productie over.
+
+Vul daarna in het adminpanel (`/admin`) eventueel extra skills, keur entertainerprofielen goed en zet KvK, BTW en vestigingsadres in de env (`COMPANY_KVK`, `COMPANY_BTW`, `COMPANY_ADDRESS`, `COMPANY_EMAIL`). E-mail vereist SPF/DKIM op `kinderentertainers.nl`. PostgreSQL-back-up:
+
+```bash
+DB_HOST=... DB_USERNAME=... DB_PASSWORD=... ./docker/scripts/backup-postgres.sh
+```
+
 ## Static asset host
 
 Voor productie kan CSS/JS via het cookie-vrije static-subdomein worden geserveerd:
@@ -98,6 +118,7 @@ Laat `static.kinderentertainers.nl` naar dezelfde `public_html/` release wijzen 
 - Adminpanel: `/admin`
 - Eerste setup als er nog geen gebruikers zijn: `/setup`
 - Sitemap: `/sitemap.xml`
+- Robots: `/robots.txt`
 - Betaalwebhooks: `/webhooks/betalingen/{provider}`
 - Publieke landingspagina's: `/{landingPage:slug}` met gereserveerde systeemroutes uitgesloten.
 

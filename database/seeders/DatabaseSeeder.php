@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Actions\BootstrapPlatform;
 use App\Enums\AvailabilityStatus;
 use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
@@ -14,37 +15,22 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        foreach (['admin', 'entertainer', 'klant'] as $role) {
-            Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+        $bootstrap = app(BootstrapPlatform::class);
+        $bootstrap->seedRolesAndSkills();
+
+        if (app()->isProduction()) {
+            return;
         }
 
-        $skills = collect([
-            'Schminker',
-            'Ballonartiest',
-            'Kinder-DJ',
-            'Goochelaar',
-            'Glittertattoo artiest',
-            'Clown',
-            'Spelletjesbegeleider',
-            'Mascotte',
-            'Poppenkast',
-            'Workshop begeleider',
-        ])->mapWithKeys(fn (string $name) => [
-            $name => Skill::firstOrCreate(
-                ['slug' => Str::slug($name)],
-                [
-                    'name' => $name,
-                    'description' => "Professionele skill: {$name}.",
-                    'active' => true,
-                ],
-            ),
-        ]);
+        $skillModels = Skill::query()
+            ->whereIn('name', BootstrapPlatform::SKILLS)
+            ->get()
+            ->keyBy('name');
 
         $admin = User::factory()->create([
             'name' => 'Edwin Rasser',
@@ -83,7 +69,9 @@ class DatabaseSeeder extends Seeder
                 'featured' => $index === 0,
             ]);
 
-            $entertainer->skills()->sync(collect($demo['skills'])->map(fn (string $skill) => $skills[$skill]->id));
+            $entertainer->skills()->sync(
+                collect($demo['skills'])->map(fn (string $skill) => $skillModels[$skill]->id)
+            );
 
             foreach (CustomerType::cases() as $type) {
                 Rate::factory()->create([

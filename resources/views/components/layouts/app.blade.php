@@ -1,6 +1,6 @@
 @props([
     'title' => 'Kinderentertainers.nl',
-    'metaDescription' => null,
+    'metaDescription' => 'Vind en boek kinderentertainers voor kinderfeestjes, scholen en events.',
     'canonicalUrl' => null,
     'robots' => null,
     'ogImage' => null,
@@ -47,10 +47,9 @@
         })();
     </script>
     <link rel="icon" href="{{ asset('brand/favicon.svg') }}" type="image/svg+xml">
-    <link rel="alternate icon" href="{{ asset('favicon.ico') }}" sizes="32x32">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen font-sans text-slate-900 antialiased dark:text-slate-100">
+<body class="min-h-screen font-sans text-slate-900 antialiased dark:text-slate-100" data-plausible-domain="{{ config('services.plausible.domain') }}">
     <header class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/92 backdrop-blur dark:border-slate-700 dark:bg-slate-950/90">
         <div class="brand-shell flex flex-wrap items-center justify-between gap-3 py-3">
             <a href="{{ route('home') }}" class="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-teal">
@@ -58,6 +57,7 @@
             </a>
             <nav class="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 sm:gap-5">
                 <a href="{{ route('entertainers.index') }}" class="hover:text-brand-teal">Entertainers</a>
+                <a href="{{ route('booking-requests.general.create') }}" class="hover:text-brand-teal">Aanvragen</a>
                 @auth
                     @if (auth()->user()->hasRole('klant') && ! auth()->user()->hasRole('entertainer'))
                         <a href="{{ route('customer-portal.index') }}" class="hover:text-brand-teal">Klantportaal</a>
@@ -81,12 +81,32 @@
     </main>
 
     <footer class="border-t border-slate-200 bg-white/70 py-8 text-sm dark:border-slate-800 dark:bg-slate-950/70">
-        <div class="brand-shell flex flex-wrap gap-4 text-slate-600 dark:text-slate-300">
+        <div class="brand-shell flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-300">
             <a href="{{ route('legal.terms') }}" class="hover:text-brand-teal">Algemene voorwaarden</a>
             <a href="{{ route('legal.privacy') }}" class="hover:text-brand-teal">Privacyverklaring</a>
             <a href="{{ route('legal.cookies') }}" class="hover:text-brand-teal">Cookieverklaring</a>
             <button type="button" data-cookie-open class="hover:text-brand-teal">Cookievoorkeuren</button>
+            @if (! empty($company['email']))
+                <a href="mailto:{{ $company['email'] }}" class="hover:text-brand-teal">{{ $company['email'] }}</a>
+            @endif
+            @if (! empty($company['phone']))
+                <a href="tel:{{ preg_replace('/\s+/', '', $company['phone']) }}" class="hover:text-brand-teal">{{ $company['phone'] }}</a>
+            @endif
+            @if (! empty($company['kvk']))
+                <span>KvK-nr. {{ $company['kvk'] }}</span>
+            @endif
+            @if (! empty($company['btw']))
+                <span>BTW-nr. {{ $company['btw'] }}</span>
+            @endif
         </div>
+        @if (! empty($company['legal_name']) || ! empty($company['address']))
+            <p class="brand-shell mt-3 text-xs text-slate-500 dark:text-slate-400">
+                {{ $company['legal_name'] }}
+                @if (! empty($company['address']))
+                    · {{ $company['address'] }}
+                @endif
+            </p>
+        @endif
     </footer>
 
     <div data-cookie-modal class="preference-modal hidden" role="dialog" aria-modal="true" aria-labelledby="cookie-modal-title">

@@ -39,4 +39,8 @@ return [
         'live_health_checks' => env('INTEGRATION_LIVE_HEALTH_CHECKS', false),
     ],
 
+    'plausible' => [
+        'domain' => env('PLAUSIBLE_DOMAIN'),
+    ],
+
 ];

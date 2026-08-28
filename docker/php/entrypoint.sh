@@ -35,8 +35,8 @@ if [ "${WAIT_FOR_DB:-true}" = "true" ]; then
     esac
 fi
 
-if [ "${RUN_STORAGE_LINK:-true}" = "true" ]; then
-    gosu www-data php artisan storage:link --force --relative || true
+if [ "${RUN_STORAGE_LINK:-true}" = "true" ] && [ ! -e public_html/storage ] && [ ! -L public_html/storage ]; then
+    gosu www-data php artisan storage:link --force || true
 fi
 
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
@@ -56,6 +56,9 @@ if [ "${1#-}" != "$1" ]; then
 fi
 
 case "$1" in
+    start-production)
+        exec supervisord -c /etc/supervisor/conf.d/laravel.conf
+        ;;
     php-fpm)
         exec "$@"
         ;;

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Entertainer;
 use App\Models\LandingPage;
+use DateTimeInterface;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 
 class SitemapController extends Controller
 {
@@ -13,6 +15,9 @@ class SitemapController extends Controller
         $urls = collect([
             ['loc' => route('home'), 'lastmod' => null],
             ['loc' => route('entertainers.index'), 'lastmod' => null],
+            ['loc' => route('legal.terms'), 'lastmod' => null],
+            ['loc' => route('legal.privacy'), 'lastmod' => null],
+            ['loc' => route('legal.cookies'), 'lastmod' => null],
         ])
             ->merge(
                 Entertainer::query()
@@ -34,8 +39,34 @@ class SitemapController extends Controller
                     ])
             );
 
-        return response()
-            ->view('sitemap', ['urls' => $urls])
-            ->header('Content-Type', 'application/xml');
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'."\n";
+
+        foreach ($urls as $url) {
+            $xml .= "  <url>\n";
+            $xml .= '    <loc>'.e($url['loc'])."</loc>\n";
+
+            $lastmod = $this->lastmod($url['lastmod'] ?? null);
+            if ($lastmod !== null) {
+                $xml .= '    <lastmod>'.e($lastmod)."</lastmod>\n";
+            }
+
+            $xml .= "  </url>\n";
+        }
+
+        $xml .= '</urlset>';
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/xml; charset=UTF-8',
+        ]);
+    }
+
+    private function lastmod(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface || (is_string($value) && $value !== '')) {
+            return Carbon::parse($value)->toAtomString();
+        }
+
+        return null;
     }
 }

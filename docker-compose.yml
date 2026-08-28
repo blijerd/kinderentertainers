@@ -31,6 +31,10 @@ x-laravel-env: &laravel-env
   MAIL_FROM_ADDRESS: noreply@kinderentertainers.nl
   MAIL_FROM_NAME: Kinderentertainers.nl
   VITE_APP_NAME: Kinderentertainers.nl
+  COMPANY_LEGAL_NAME: Blijevent B.V.
+  COMPANY_KVK: "82010633"
+  COMPANY_BTW: NL862303722B01
+  COMPANY_EMAIL: info@kinderentertainers.nl
   WAIT_FOR_DB: "true"
   RUN_STORAGE_LINK: "true"
 
@@ -40,24 +44,41 @@ services:
     environment:
       <<: *laravel-env
       RUN_MIGRATIONS: "true"
+    expose:
+      - "9000"
     volumes:
       - app-storage:/var/www/html/storage
       - app-cache:/var/www/html/bootstrap/cache
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     restart: unless-stopped
 
   web:
     build:
       context: .
       target: web
+    expose:
+      - "80"
     ports:
       - "8080:80"
     volumes:
       - app-storage:/var/www/html/storage:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -T 5 -O /dev/null http://127.0.0.1/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     restart: unless-stopped
 
   queue:
@@ -73,7 +94,7 @@ services:
       postgres:
         condition: service_healthy
       app:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   scheduler:
@@ -89,7 +110,7 @@ services:
       postgres:
         condition: service_healthy
       app:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:

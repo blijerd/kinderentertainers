@@ -21,6 +21,27 @@ function applyTheme(theme) {
     document.documentElement.classList.toggle('dark', value === 'dark' || (value === 'auto' && prefersDark));
 }
 
+function loadPlausible(domain) {
+    if (!domain || document.querySelector('script[data-ke-plausible]')) {
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.defer = true;
+    script.dataset.domain = domain;
+    script.dataset.kePlausible = '1';
+    script.src = 'https://plausible.io/js/script.js';
+    document.head.appendChild(script);
+}
+
+function applyAnalytics(state) {
+    const domain = document.body?.dataset.plausibleDomain;
+
+    if (state.analytics && domain) {
+        loadPlausible(domain);
+    }
+}
+
 function setupCookieModal() {
     const modal = document.querySelector('[data-cookie-modal]');
 
@@ -38,11 +59,14 @@ function setupCookieModal() {
         });
     };
     const save = (state) => {
-        writeJson(cookieKey, { necessary: true, analytics: false, marketing: false, ...state, hasDecision: true });
+        const next = { necessary: true, analytics: false, marketing: false, ...state, hasDecision: true };
+        writeJson(cookieKey, next);
+        applyAnalytics(next);
         setVisible(false);
     };
 
     syncInputs(current);
+    applyAnalytics(current);
     openButtons.forEach((button) => button.addEventListener('click', () => setVisible(true)));
     modal.querySelector('[data-cookie-necessary]')?.addEventListener('click', () => save({ analytics: false, marketing: false }));
     modal.querySelector('[data-cookie-all]')?.addEventListener('click', () => save({ analytics: true, marketing: true }));

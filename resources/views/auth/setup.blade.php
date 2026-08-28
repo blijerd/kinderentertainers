@@ -5,6 +5,9 @@
 
         <form method="POST" action="{{ route('setup.store') }}" class="brand-card mt-6 space-y-4 p-5">
             @csrf
+@if (! empty($setupToken))
+                <input type="hidden" name="token" value="{{ $setupToken }}">
+            @endif
 
             <label class="block space-y-1">
                 <span class="text-sm font-medium">Naam</span>

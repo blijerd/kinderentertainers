@@ -156,9 +156,52 @@ class PlatformTest extends TestCase
 
         $this->get(route('sitemap'))
             ->assertOk()
-            ->assertHeader('content-type', 'application/xml')
+            ->assertSee('<?xml version="1.0" encoding="UTF-8"?>', false)
             ->assertSee(url('/ballonnenclown-boeken'))
+            ->assertSee(route('legal.terms'))
             ->assertDontSee(url('/noindex-pagina'));
+
+        $this->assertStringStartsWith('application/xml', (string) $this->get(route('sitemap'))->headers->get('content-type'));
+    }
+
+    public function test_robots_txt_blocks_private_paths_and_points_to_sitemap(): void
+    {
+        $this->get(route('robots'))
+            ->assertOk()
+            ->assertSee('Disallow: /admin')
+            ->assertSee('Disallow: /setup')
+            ->assertSee('Sitemap: '.url('/sitemap.xml'));
+    }
+
+    public function test_footer_shows_chamber_of_commerce_and_vat_numbers(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('KvK-nr. 82010633')
+            ->assertSee('BTW-nr. NL862303722B01')
+            ->assertSee('Blijevent B.V.');
+    }
+
+    public function test_home_uses_real_entertainer_counts(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('name="description"', false)
+            ->assertSee('>0</span>', false)
+            ->assertSee('entertainers')
+            ->assertDontSee('>32</span>', false);
+
+        Entertainer::factory()->create([
+            'active' => true,
+            'rating' => 4.5,
+            'reviews_count' => 8,
+        ]);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('>1</span>', false)
+            ->assertSee('entertainer')
+            ->assertSee('4,5');
     }
 
     public function test_livewire_public_smart_filters_work(): void
@@ -1058,6 +1101,43 @@ class PlatformTest extends TestCase
         $this->assertAuthenticatedAs($user);
         $this->assertTrue(Hash::check('veilig-wachtwoord', $user->password));
         $this->assertTrue($user->hasRole('admin'));
+        $this->assertTrue(Skill::query()->where('slug', 'schminker')->exists());
+    }
+
+    public function test_setup_requires_token_in_production(): void
+    {
+        $this->app['env'] = 'production';
+        config(['app.setup_token' => 'geheime-setup-token']);
+
+        $this->get(route('setup'))->assertNotFound();
+        $this->get(route('setup', ['token' => 'fout']))->assertNotFound();
+        $this->get(route('setup', ['token' => 'geheime-setup-token']))
+            ->assertOk()
+            ->assertSee('Eerste gebruiker aanmaken');
+    }
+
+    public function test_bootstrap_command_creates_admin_and_skills_without_demo_users(): void
+    {
+        $this->artisan('app:bootstrap', [
+            '--name' => 'Beheerder',
+            '--email' => 'admin@example.com',
+            '--password' => 'veilig-wachtwoord',
+        ])->assertSuccessful();
+
+        $this->assertDatabaseCount('users', 1);
+        $this->assertTrue(User::query()->where('email', 'admin@example.com')->firstOrFail()->hasRole('admin'));
+        $this->assertTrue(Skill::query()->where('slug', 'schminker')->exists());
+        $this->assertDatabaseMissing('users', ['email' => 'entertainer1@kinderentertainers.nl']);
+    }
+
+    public function test_production_seeder_does_not_create_demo_logins(): void
+    {
+        $this->app['env'] = 'production';
+
+        $this->artisan('db:seed', ['--force' => true])->assertSuccessful();
+
+        $this->assertDatabaseCount('users', 0);
+        $this->assertTrue(Skill::query()->where('slug', 'schminker')->exists());
     }
 
     public function test_setup_redirects_when_user_already_exists(): void
@@ -1630,7 +1710,7 @@ class PlatformTest extends TestCase
         $document = LegalDocument::query()->where('type', LegalDocumentType::Privacy->value)->firstOrFail();
         $document->versions()->update(['published_at' => now()->subHour()]);
         $document->versions()->create([
-            'version_label' => 'v2',
+            'version_label' => 'v-test',
             'body' => "# Privacy v2\n\nNieuwe privacytekst.",
             'published_at' => now(),
         ]);
@@ -1638,7 +1718,7 @@ class PlatformTest extends TestCase
         $this->get(route('legal.privacy'))
             ->assertOk()
             ->assertSee('Privacyverklaring')
-            ->assertSee('Versie v2')
+            ->assertSee('Versie v-test')
             ->assertSee('Nieuwe privacytekst');
     }
 
@@ -1647,14 +1727,14 @@ class PlatformTest extends TestCase
         $document = LegalDocument::query()->where('type', LegalDocumentType::Privacy->value)->firstOrFail();
         $document->versions()->update(['published_at' => now()->subHour()]);
         $document->versions()->create([
-            'version_label' => 'v2',
+            'version_label' => 'v-test-future',
             'body' => "# Privacy v2\n\nNieuwe privacytekst.",
             'published_at' => now()->addMinute(),
         ]);
 
         $this->get(route('legal.privacy'))
             ->assertOk()
-            ->assertSee('Versie v1')
+            ->assertSee('Versie v2')
             ->assertDontSee('Nieuwe privacytekst');
     }
 

@@ -83,8 +83,6 @@ RUN mkdir -p \
 COPY docker/php/entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint
 
-EXPOSE 9000
-
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["php-fpm"]
 
@@ -95,3 +93,25 @@ COPY --from=app /var/www/html/public_html /var/www/html/public_html
 COPY --from=app /var/www/html/storage/app/public /var/www/html/storage/app/public
 
 EXPOSE 80
+
+FROM app AS production
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx-light supervisor \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/nginx/sites-enabled/default \
+    && ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
+
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/supervisor/laravel.conf /etc/supervisor/conf.d/laravel.conf
+COPY docker/php/opcache-production.ini /usr/local/etc/php/conf.d/opcache.ini
+RUN sed -i 's/fastcgi_pass app:9000;/fastcgi_pass 127.0.0.1:9000;/' /etc/nginx/conf.d/default.conf \
+    && nginx -t
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS http://127.0.0.1/up >/dev/null || exit 1
+
+CMD ["start-production"]

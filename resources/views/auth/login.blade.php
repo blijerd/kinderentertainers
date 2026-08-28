@@ -15,6 +15,10 @@
                 <input name="password" type="password" required class="w-full rounded-md border-slate-300 text-sm">
             </label>
             @error('email') <p class="text-sm text-red-700">{{ $message }}</p> @enderror
+            <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="remember" value="1" @checked(old('remember')) class="rounded border-slate-300">
+                Onthoud mij
+            </label>
             <a href="{{ route('password.request') }}" class="text-sm font-semibold text-brand-teal hover:text-brand-coral">Wachtwoord vergeten?</a>
             <button class="brand-button w-full">Inloggen</button>
         </form>
