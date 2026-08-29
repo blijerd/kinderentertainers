@@ -6,5 +6,6 @@
             <p class="mt-3 text-lg leading-8 text-slate-700 dark:text-slate-300">Filter op skill, leeftijd, type feest, prijs, regio, beoordeling, beschikbaarheid en taal om passende entertainers te vinden.</p>
         </div>
         <livewire:entertainer-index />
+        <x-related-brands variant="cards" inset />
     </section>
 </x-layouts.app>

@@ -45,15 +45,15 @@ class SelectBookingRequestMatch
                     'selected_at' => null,
                 ]);
 
-            $match->update([
+            $match->forceFill([
                 'status' => BookingRequestMatchStatus::Accepted,
                 'selected_at' => now(),
-            ]);
+            ])->save();
 
-            $bookingRequest->update([
+            $bookingRequest->forceFill([
                 'entertainer_id' => $match->entertainer_id,
                 'status' => BookingStatus::Option,
-            ]);
+            ])->save();
 
             $match = $match->refresh();
 

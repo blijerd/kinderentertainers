@@ -22,5 +22,6 @@
                 <div class="landing-content">{!! $landingPage->bodyHtml() !!}</div>
             </article>
         @endif
+        <x-related-brands variant="cards" inset />
     </section>
 </x-layouts.app>

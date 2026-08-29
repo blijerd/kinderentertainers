@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BookingRequestEventType;
 use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
+use App\Support\Models\HasPublicIdentifier;
 use Database\Factories\BookingRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'entertainer_id',
@@ -36,7 +38,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'selected_package',
     'selected_extras',
     'message',
-    'status',
     'quote_accepted_at',
     'quote_acceptance_name',
     'quote_acceptance_ip',
@@ -92,7 +93,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class BookingRequest extends Model
 {
     /** @use HasFactory<BookingRequestFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicIdentifier, SoftDeletes;
 
     public function entertainer(): BelongsTo
     {

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\IntegrationProvider;
+use App\Support\Models\HasPublicIdentifier;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'entertainer_id',
@@ -19,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class EntertainerIntegration extends Model
 {
+    use HasPublicIdentifier, SoftDeletes;
+
     public function entertainer(): BelongsTo
     {
         return $this->belongsTo(Entertainer::class);

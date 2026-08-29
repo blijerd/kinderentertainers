@@ -36,7 +36,12 @@ class BookingRequestForm
             TextInput::make('children_count')->label('Aantal kinderen')->numeric(),
             TextInput::make('children_ages')->label('Leeftijd kinderen'),
             Select::make('desired_skills')->label('Gewenste skills')->options(fn (): array => Skill::query()->orderBy('name')->pluck('name', 'name')->all())->multiple()->preload(),
-            Select::make('status')->label('Status')->options(collect(BookingStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()]))->required(),
+            Select::make('status')
+                ->label('Status')
+                ->options(collect(BookingStatus::cases())->mapWithKeys(fn ($status) => [$status->value => $status->label()]))
+                ->disabled()
+                ->dehydrated(false)
+                ->helperText('Status wijzigen via de acties bovenin het record.'),
             TextInput::make('price_indication_min_cents')->label('Prijsindicatie vanaf in centen')->numeric(),
             TextInput::make('price_indication_max_cents')->label('Prijsindicatie tot in centen')->numeric(),
             Textarea::make('message')->label('Bericht')->columnSpanFull(),

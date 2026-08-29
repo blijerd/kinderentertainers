@@ -30,8 +30,7 @@ class AcceptBookingQuote
             now()->toIso8601String(),
         ]));
 
-        $bookingRequest->update([
-            'status' => BookingStatus::Confirmed,
+        $bookingRequest->fill([
             'quote_accepted_at' => now(),
             'quote_acceptance_name' => Arr::get($audit, 'acceptance_name') ?: $bookingRequest->name,
             'quote_acceptance_ip' => Arr::get($audit, 'ip'),
@@ -46,6 +45,9 @@ class AcceptBookingQuote
             'cash_payment_allowed' => (bool) $entertainer?->cash_payment_enabled,
             'payment_instruction_sent_at' => null,
         ]);
+        $bookingRequest->forceFill([
+            'status' => BookingStatus::Confirmed,
+        ])->save();
 
         $bookingRequest->events()->create([
             'type' => BookingRequestEventType::System,

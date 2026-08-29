@@ -8,6 +8,7 @@ use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
 use App\Models\User;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class UserResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

@@ -49,6 +49,7 @@ services:
     volumes:
       - app-storage:/var/www/html/storage
       - app-cache:/var/www/html/bootstrap/cache
+      - ./content:/var/www/html/content
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,7 +75,7 @@ services:
       app:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -T 5 -O /dev/null http://127.0.0.1/up"]
+      test: ["CMD-SHELL", "wget -q -T 5 --header='Host: localhost' -O /dev/null http://127.0.0.1/up"]
       interval: 10s
       timeout: 5s
       retries: 6

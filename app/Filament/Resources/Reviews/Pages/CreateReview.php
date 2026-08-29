@@ -2,24 +2,26 @@
 
 namespace App\Filament\Resources\Reviews\Pages;
 
+use App\Actions\ModerateReview;
 use App\Enums\ReviewStatus;
 use App\Filament\Resources\Reviews\ReviewResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class CreateReview extends CreateRecord
 {
     protected static string $resource = ReviewResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    protected function handleRecordCreation(array $data): Model
     {
-        if (($data['status'] ?? null) === ReviewStatus::Approved->value && blank($data['published_at'] ?? null)) {
-            $data['published_at'] = now();
-        }
+        $review = static::getModel()::query()->make();
 
-        if (($data['status'] ?? null) !== ReviewStatus::Approved->value) {
-            $data['published_at'] = null;
-        }
-
-        return $data;
+        return app(ModerateReview::class)->handle($review, [
+            ...$data,
+            'status' => $data['status'] ?? ReviewStatus::Pending,
+        ]);
     }
 }

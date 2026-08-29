@@ -8,6 +8,7 @@ use App\Filament\Resources\LegalDocumentVersions\Pages\ListLegalDocumentVersions
 use App\Filament\Resources\LegalDocumentVersions\Schemas\LegalDocumentVersionForm;
 use App\Filament\Resources\LegalDocumentVersions\Tables\LegalDocumentVersionsTable;
 use App\Models\LegalDocumentVersion;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class LegalDocumentVersionResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = LegalDocumentVersion::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

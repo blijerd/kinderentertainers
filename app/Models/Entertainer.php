@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\AccountingProvider;
 use App\Enums\PaymentProvider;
 use App\Enums\ReviewStatus;
+use App\Support\Models\HasPublicIdentifier;
 use Database\Factories\EntertainerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
@@ -59,7 +61,7 @@ use Illuminate\Support\Facades\Storage;
 class Entertainer extends Model
 {
     /** @use HasFactory<EntertainerFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicIdentifier, SoftDeletes;
 
     public function user(): BelongsTo
     {

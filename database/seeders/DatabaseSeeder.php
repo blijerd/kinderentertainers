@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Actions\BootstrapPlatform;
+use App\Actions\CreateBlogPost;
+use App\Actions\CreateBlogTag;
 use App\Enums\AvailabilityStatus;
 use App\Enums\BookingStatus;
 use App\Enums\CustomerType;
@@ -99,5 +101,76 @@ class DatabaseSeeder extends Seeder
                 'customer_message' => $index === 0 ? 'We hebben je aanvraag ontvangen en nemen contact met je op.' : null,
             ]);
         }
+
+        $this->seedDemoBlog($admin);
+    }
+
+    protected function seedDemoBlog(User $author): void
+    {
+        $kinderfeestje = app(CreateBlogTag::class)->handle([
+            'name' => 'Kinderfeestje',
+            'slug' => 'kinderfeestje',
+            'description' => 'Tips voor een soepel kinderfeestje met een professionele act.',
+        ]);
+        $boeken = app(CreateBlogTag::class)->handle([
+            'name' => 'Boeken',
+            'slug' => 'boeken',
+            'description' => 'Hoe je via Kinderentertainers.nl een entertainer aanvraagt en boekt.',
+        ]);
+        $schminken = app(CreateBlogTag::class)->handle([
+            'name' => 'Schminken',
+            'slug' => 'schminken',
+            'description' => 'Alles over schminkartiesten op kinderfeestjes.',
+        ]);
+
+        app(CreateBlogPost::class)->handle([
+            'author_id' => $author->id,
+            'title' => 'Hoe boek je een kinderentertainer?',
+            'slug' => 'hoe-boek-je-een-kinderentertainer',
+            'intro' => 'Van filteren op skill tot een concrete aanvraag: zo regel je een kinderentertainer zonder gedoe.',
+            'body' => <<<'MD'
+## Kies de act die past
+
+Filter op skill, regio en beschikbaarheid. Zo blijft een schminker, goochelaar of kinder-DJ over die écht past bij het feest.
+
+## Stuur een concrete aanvraag
+
+Vermeld datum, tijden, locatie en het type feest. Hoe duidelijker de aanvraag, hoe sneller je een passende reactie krijgt.
+
+## Vergelijk en ga akkoord
+
+Bekijk beschikbare matches of een offerte, controleer de voorwaarden en bevestig. De entertainer factureert daarna zelf.
+MD,
+            'seo_title' => 'Kinderentertainer boeken: zo werkt het',
+            'meta_description' => 'Leer hoe je via Kinderentertainers.nl een kinderentertainer zoekt, aanvraagt en boekt.',
+            'is_published' => true,
+            'published_at' => now()->subDays(3),
+            'tag_ids' => [$kinderfeestje->id, $boeken->id],
+        ]);
+
+        app(CreateBlogPost::class)->handle([
+            'author_id' => $author->id,
+            'title' => 'Schminken op een kinderfeestje: waar let je op?',
+            'slug' => 'schminken-op-een-kinderfeestje',
+            'intro' => 'Een schminkartiest maakt een kinderfeest extra feestelijk. Let op tijdsduur, leeftijd en hypoallergene producten.',
+            'body' => <<<'MD'
+## Plan genoeg tijd
+
+Reken per kind enkele minuten. Voor een klas of grotere groep is een langere act of een extra artiest prettig.
+
+## Geef de leeftijd door
+
+Peuters hebben andere ontwerpen nodig dan schoolkinderen. Zet de leeftijdsgroep in de aanvraag, dan kan de schminker voorbereiden.
+
+## Vraag naar producten
+
+Professionele schminkers werken met huidvriendelijke producten. Heb je kinderen met een gevoelige huid? Vermeld dat in de aanvraag.
+MD,
+            'seo_title' => 'Schminken kinderfeestje: praktische tips',
+            'meta_description' => 'Tips voor het boeken van een schminkartiest op een kinderfeestje, van tijdsduur tot leeftijd.',
+            'is_published' => true,
+            'published_at' => now()->subDay(),
+            'tag_ids' => [$kinderfeestje->id, $schminken->id],
+        ]);
     }
 }

@@ -8,6 +8,7 @@ use App\Filament\Resources\Rates\Pages\ListRates;
 use App\Filament\Resources\Rates\Schemas\RateForm;
 use App\Filament\Resources\Rates\Tables\RatesTable;
 use App\Models\Rate;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class RateResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = Rate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

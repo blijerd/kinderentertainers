@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlogPost;
+use App\Models\BlogTag;
 use App\Models\Entertainer;
 use App\Models\LandingPage;
 use DateTimeInterface;
@@ -15,6 +17,7 @@ class SitemapController extends Controller
         $urls = collect([
             ['loc' => route('home'), 'lastmod' => null],
             ['loc' => route('entertainers.index'), 'lastmod' => null],
+            ['loc' => route('blog.index'), 'lastmod' => null],
             ['loc' => route('legal.terms'), 'lastmod' => null],
             ['loc' => route('legal.privacy'), 'lastmod' => null],
             ['loc' => route('legal.cookies'), 'lastmod' => null],
@@ -36,6 +39,25 @@ class SitemapController extends Controller
                     ->map(fn (LandingPage $landingPage): array => [
                         'loc' => route('landing-pages.show', $landingPage),
                         'lastmod' => $landingPage->updated_at,
+                    ])
+            )
+            ->merge(
+                BlogPost::query()
+                    ->indexable()
+                    ->get(['slug', 'updated_at'])
+                    ->map(fn (BlogPost $post): array => [
+                        'loc' => route('blog.show', $post),
+                        'lastmod' => $post->updated_at,
+                    ])
+            )
+            ->merge(
+                BlogTag::query()
+                    ->withPublishedPosts()
+                    ->where('noindex', false)
+                    ->get(['slug', 'updated_at'])
+                    ->map(fn (BlogTag $tag): array => [
+                        'loc' => route('blog.tag', $tag),
+                        'lastmod' => $tag->updated_at,
                     ])
             );
 

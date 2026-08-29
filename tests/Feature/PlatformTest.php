@@ -182,6 +182,34 @@ class PlatformTest extends TestCase
             ->assertSee('Blijevent B.V.');
     }
 
+    public function test_public_pages_link_to_related_brands_with_logos(): void
+    {
+        $landingPage = LandingPage::query()->create([
+            'title' => 'Kinder-DJ boeken',
+            'slug' => 'kinder-dj-boeken',
+            'intro' => 'Boek een kinder-DJ via het platform.',
+            'is_published' => true,
+            'noindex' => false,
+        ]);
+
+        foreach ([
+            $this->get(route('home')),
+            $this->get(route('entertainers.index')),
+            $this->get(route('blog.index')),
+            $this->get(route('landing-pages.show', $landingPage)),
+        ] as $response) {
+            $response
+                ->assertOk()
+                ->assertSee('https://kidsdisco.eu/', false)
+                ->assertSee('https://kidsdj-edwin.nl/', false)
+                ->assertSee(asset('brand/kidsdisco-mark.svg'), false)
+                ->assertSee(asset('brand/kidsdj-edwin-mark.svg'), false)
+                ->assertSee('Kidsdisco.eu')
+                ->assertSee('Kids DJ Edwin')
+                ->assertSee('Ook van Blijevent');
+        }
+    }
+
     public function test_home_uses_real_entertainer_counts(): void
     {
         $this->get(route('home'))
@@ -556,7 +584,7 @@ class PlatformTest extends TestCase
         $download = $this->actingAs($customer)
             ->get(route('customer-portal.download', $bookingRequest));
 
-        $download->assertDownload('aanvraag-'.$bookingRequest->id.'-confirmation.pdf');
+        $download->assertDownload('aanvraag-'.$bookingRequest->public_id.'-confirmation.pdf');
         $this->assertStringStartsWith('%PDF-', $download->streamedContent());
     }
 
@@ -642,7 +670,7 @@ class PlatformTest extends TestCase
             'user_id' => $user->id,
         ]);
         $bookingRequest = BookingRequest::factory()->create(['entertainer_id' => null]);
-        $match = BookingRequestMatch::query()->create([
+        $match = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $entertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -688,13 +716,13 @@ class PlatformTest extends TestCase
             'name' => 'Andere algemene aanvraag',
         ]);
 
-        BookingRequestMatch::query()->create([
+        BookingRequestMatch::factory()->create([
             'booking_request_id' => $ownRequest->id,
             'entertainer_id' => $entertainer->id,
             'status' => BookingRequestMatchStatus::Available,
             'matched_at' => now(),
         ]);
-        BookingRequestMatch::query()->create([
+        BookingRequestMatch::factory()->create([
             'booking_request_id' => $otherRequest->id,
             'entertainer_id' => $otherEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -720,7 +748,7 @@ class PlatformTest extends TestCase
             'entertainer_id' => null,
             'status' => BookingStatus::New,
         ]);
-        $match = BookingRequestMatch::query()->create([
+        $match = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $entertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -750,7 +778,7 @@ class PlatformTest extends TestCase
         $user->assignRole('entertainer');
         Entertainer::factory()->create(['user_id' => $user->id]);
         $otherEntertainer = Entertainer::factory()->create();
-        $match = BookingRequestMatch::query()->create([
+        $match = BookingRequestMatch::factory()->create([
             'booking_request_id' => BookingRequest::factory()->create(['entertainer_id' => null])->id,
             'entertainer_id' => $otherEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -778,7 +806,7 @@ class PlatformTest extends TestCase
         $otherUser = User::factory()->create(['email' => 'ander@example.com']);
         $chosenEntertainer = Entertainer::factory()->create(['user_id' => $chosenUser->id]);
         $otherEntertainer = Entertainer::factory()->create(['user_id' => $otherUser->id]);
-        $chosenMatch = BookingRequestMatch::query()->create([
+        $chosenMatch = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $chosenEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -787,7 +815,7 @@ class PlatformTest extends TestCase
             'matched_at' => now(),
             'responded_at' => now(),
         ]);
-        $otherMatch = BookingRequestMatch::query()->create([
+        $otherMatch = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $otherEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -824,14 +852,14 @@ class PlatformTest extends TestCase
         ]);
         $chosenEntertainer = Entertainer::factory()->create();
         $expiredEntertainer = Entertainer::factory()->create();
-        $chosenMatch = BookingRequestMatch::query()->create([
+        $chosenMatch = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $chosenEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
             'matched_at' => now(),
             'responded_at' => now(),
         ]);
-        $expiredMatch = BookingRequestMatch::query()->create([
+        $expiredMatch = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => $expiredEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -867,7 +895,7 @@ class PlatformTest extends TestCase
             'customer_selection_expires_at' => now()->subMinute(),
             'status' => BookingStatus::New,
         ]);
-        $match = BookingRequestMatch::query()->create([
+        $match = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => Entertainer::factory()->create()->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -965,7 +993,7 @@ class PlatformTest extends TestCase
             'status' => BookingStatus::Option,
         ]);
 
-        BookingRequestMatch::query()->create([
+        BookingRequestMatch::factory()->create([
             'booking_request_id' => $existingGeneralRequest->id,
             'entertainer_id' => $conflicting->id,
             'status' => BookingRequestMatchStatus::Accepted,
@@ -993,7 +1021,7 @@ class PlatformTest extends TestCase
             'status' => BookingStatus::Option,
         ]);
 
-        BookingRequestMatch::query()->create([
+        BookingRequestMatch::factory()->create([
             'booking_request_id' => $existingGeneralRequest->id,
             'entertainer_id' => $expired->id,
             'status' => BookingRequestMatchStatus::Expired,
@@ -1870,7 +1898,7 @@ class PlatformTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole('admin');
         $bookingRequest = BookingRequest::factory()->create(['entertainer_id' => null]);
-        $match = BookingRequestMatch::query()->create([
+        $match = BookingRequestMatch::factory()->create([
             'booking_request_id' => $bookingRequest->id,
             'entertainer_id' => Entertainer::factory()->create()->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -1911,7 +1939,7 @@ class PlatformTest extends TestCase
             'event_date' => now()->addMonth()->toDateString(),
         ]);
 
-        BookingRequestMatch::query()->create([
+        BookingRequestMatch::factory()->create([
             'booking_request_id' => $matchedRequest->id,
             'entertainer_id' => $matchedEntertainer->id,
             'status' => BookingRequestMatchStatus::Available,
@@ -2138,10 +2166,10 @@ class PlatformTest extends TestCase
         $this->assertSame(1, $entertainer->refresh()->reviews_count);
         $this->assertSame('5.0', $entertainer->rating);
 
-        $review->update([
+        $review->forceFill([
             'status' => ReviewStatus::Pending,
             'published_at' => null,
-        ]);
+        ])->save();
 
         $this->assertSame(0, $entertainer->refresh()->reviews_count);
         $this->assertNull($entertainer->rating);

@@ -8,6 +8,7 @@ use App\Filament\Resources\Availabilities\Pages\ListAvailabilities;
 use App\Filament\Resources\Availabilities\Schemas\AvailabilityForm;
 use App\Filament\Resources\Availabilities\Tables\AvailabilitiesTable;
 use App\Models\Availability;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class AvailabilityResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = Availability::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

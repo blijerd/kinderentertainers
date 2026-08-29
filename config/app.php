@@ -127,4 +127,20 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Build reference
+    |--------------------------------------------------------------------------
+    |
+    | Compact deploy stamp YYWWddhh.NNN (Europe/Amsterdam). Docker stamps
+    | bootstrap/build-ref at image build time; this env value can override it.
+    |
+    */
+
+    'build_ref' => env('KE_BUILD_REF'),
+
+    'build_ref_path' => env('KE_BUILD_REF_PATH', 'bootstrap/build-ref'),
+
+    'build_ref_timezone' => env('KE_BUILD_REF_TIMEZONE', 'Europe/Amsterdam'),
+
 ];

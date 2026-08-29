@@ -1,6 +1,6 @@
 # Kinderentertainers.nl
 
-Versie: `0.1.2`
+Versie: `0.1.4`
 
 Boekingsplatform voor kinderentertainers. Bezoekers zoeken op skill, regio, beschikbaarheid en werkgebied, doen een specifieke of algemene aanvraag, vergelijken beschikbare matches en entertainers beheren hun eigen profiel, skills, beschikbaarheid, tarieven, offertes, facturatie- en betaalinstellingen.
 
@@ -63,11 +63,13 @@ docker compose down -v
 
 Gebruik `docker compose down -v` alleen wanneer ook de lokale PostgreSQL-data en Laravel storage-volumes weg mogen.
 
-## Productie met Docker
+## Productie met Coolify
 
-Voor hosts die alleen de `Dockerfile` bouwen, gebruikt de laatste stage `production`: die start Nginx, PHP-FPM, de queue-worker en de scheduler via Supervisor in één container en serveert HTTP op poort `80`. Zet in de hostingomgeving minimaal `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://kinderentertainers.nl`, `APP_KEY`, de databasevariabelen, `MAIL_MAILER` (Postmark of SMTP) en bij voorkeur `RUN_OPTIMIZE=true`. Gebruik `RUN_MIGRATIONS=true` alleen wanneer migraties bij deploy automatisch mogen draaien. Zet `SETUP_TOKEN` op een lang geheim; zonder token is `/setup` in productie onbereikbaar.
+Productie draait via Coolify op dezelfde Docker-image voor web, worker en scheduler. De handleiding staat in [`docs/coolify-deployment.md`](docs/coolify-deployment.md): rolling updates, healthcheck op `/up`, GitHub Actions via restricted SSH, gedeelde Vite-assetcache en PostgreSQL-back-ups.
 
-Bij een Docker Compose-deploy moet de reverse proxy naar de service `web` op poort `80` wijzen. De service `app` is alleen PHP-FPM op poort `9000` en is geen HTTP-backend; als Traefik/Coolify/Dokploy daarheen routeert, krijgt de site geen bruikbare server.
+De productie-stage van de `Dockerfile` start **alleen** nginx + PHP-FPM (`web`). Queue en scheduler zijn aparte Coolify-apps met command `worker` en `scheduler`. Zet minimaal `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://kinderentertainers.nl`, `APP_KEY`, databasevariabelen, `MAIL_MAILER` en `SETUP_TOKEN`. `RUN_MIGRATIONS=auto` laat de web-container bij deploy migreren.
+
+Bij een lokale Docker Compose-stack moet de reverse proxy naar de service `web` op poort `80` wijzen. De service `app` is alleen PHP-FPM op poort `9000`.
 
 Maak de eerste beheerder zonder demo-data:
 
@@ -105,10 +107,14 @@ Laat `static.kinderentertainers.nl` naar dezelfde `public_html/` release wijzen 
 - Entertainers: `/kinderentertainers`
 - Algemene aanvraag: `/aanvragen`
 - Specifieke aanvraag: `/kinderentertainers/{slug}/aanvragen`
-- Algemene aanvraagmatches kiezen: `/aanvragen/{bookingRequest}/matches/{token}`
+- Algemene aanvraagmatches kiezen: `/aanvragen/{public_id}/matches/{token}`
 - Offerte bekijken en accepteren: `/offertes/{token}`
 - Reviews: `/reviews/{token}`
 - Juridische pagina's: `/algemene-voorwaarden`, `/privacyverklaring`, `/cookieverklaring`
+- Blogoverzicht: `/blog`
+- Blogartikel: `/blog/{slug}`
+- Blogtag: `/blog/tag/{slug}`
+- Blog RSS: `/blog/feed.xml`
 - Login: `/login`
 - Registratie: `/registreren`
 - Wachtwoord herstellen: `/wachtwoord-vergeten`
@@ -138,7 +144,9 @@ Laat `static.kinderentertainers.nl` naar dezelfde `public_html/` release wijzen 
 - Betaalwebhooks werken payment status bij voor bekende externe betaal-ID's.
 - Documentdownloads voor offerte, boekingsbevestiging, factuurinstructie en annulering.
 - Reviewflow met reviewlinks na bevestigde afgelopen boekingen en moderatie/publicatie.
-- Filament 5 adminresources voor beheer van gebruikers, entertainers, skills, beschikbaarheid, tarieven, aanvragen en landingspagina's.
+- Publieke blog met artikelen, tags, paginering, JSON-LD, RSS-feed en sitemap; slugs in plaats van database-ID's.
+- Content CLI voor landingspagina's, blogposts en foto's: schrijf markdown in `content/` en draai `php artisan content:sync` (lokaal zichtbaar zonder deploy).
+- Filament 5 adminresources voor beheer van gebruikers, entertainers, skills, beschikbaarheid, tarieven, aanvragen, landingspagina's, blogartikelen en blogtags.
 - Policies: admins mogen alles; entertainers beheren alleen eigen records.
 - Beschikbaarheidscheck controleert actieve entertainers en skills, beschikbare blokken, overlappende optie/bezet/niet-beschikbaar blokken en conflicterende specifieke of algemene aanvragen.
 - Aanvraagvalidatie controleert aanvraagtype, actieve entertainer of actieve skill, toekomstige datum, tijden, B2B-bedrijfsnaam en toegestane skills.
@@ -148,11 +156,34 @@ Laat `static.kinderentertainers.nl` naar dezelfde `public_html/` release wijzen 
   - `integrations:check` dagelijks om 08:00.
   - `calendar:sync-bookings` elke 15 minuten.
 
+## Content via command line
+
+Cursor en developers maken of wijzigen pagina's, blogposts en foto's lokaal. Dat is meteen zichtbaar na `php artisan content:sync`; er is geen Coolify-deploy voor nodig.
+
+```bash
+php artisan content:sync
+php artisan content:page schminker-kinderfeestje --title="Schminker voor kinderfeestje" --publish
+php artisan content:blog eerste-artikel --title="Eerste artikel" --tags="Kinderfeestje" --publish
+php artisan content:media content/media/hero.jpg --alt="Schminker"
+php artisan content:list
+```
+
+Bestanden:
+
+```text
+content/pages/{slug}.md
+content/blog/{slug}.md
+content/media/{bestand}.jpg
+```
+
+Markdown gebruikt YAML-front matter (`title`, `slug`, `intro`, `published`, `tags`, `og_image` / `cover_image`, `cta_label`, `cta_url`). Verwijs in de body naar foto's met `![alt](media/hero.jpg)`. PostgreSQL blijft de runtime source of truth; de bestanden zijn het auteurformaat voor agents.
+
 ## Testen
 
 ```bash
 php artisan test
 composer test
+composer test:architecture
 npm run build
 ```
 

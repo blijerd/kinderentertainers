@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\CustomerType;
+use App\Support\Models\HasPublicIdentifier;
 use Database\Factories\RateFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'entertainer_id',
@@ -22,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Rate extends Model
 {
     /** @use HasFactory<RateFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicIdentifier, SoftDeletes;
 
     public function entertainer(): BelongsTo
     {

@@ -10,6 +10,7 @@ use App\Filament\Resources\BookingRequests\RelationManagers\MatchesRelationManag
 use App\Filament\Resources\BookingRequests\Schemas\BookingRequestForm;
 use App\Filament\Resources\BookingRequests\Tables\BookingRequestsTable;
 use App\Models\BookingRequest;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -18,6 +19,8 @@ use Filament\Tables\Table;
 
 class BookingRequestResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = BookingRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

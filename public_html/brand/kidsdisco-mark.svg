@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Kidsdisco">
+  <title>Kidsdisco</title>
+  <rect width="64" height="64" rx="14" fill="#07040f"/>
+  <defs>
+    <mask id="cup-l" maskUnits="userSpaceOnUse">
+      <rect x="7.2" y="28.2" width="14.2" height="21.6" rx="7.1" fill="#fff"/>
+      <rect x="10.1" y="32.4" width="8.4" height="13.2" rx="4.2" fill="#000"/>
+    </mask>
+    <mask id="cup-r" maskUnits="userSpaceOnUse">
+      <rect x="42.6" y="28.2" width="14.2" height="21.6" rx="7.1" fill="#fff"/>
+      <rect x="45.5" y="32.4" width="8.4" height="13.2" rx="4.2" fill="#000"/>
+    </mask>
+  </defs>
+  <path d="M16 31.5C16 15.5 48 15.5 48 31.5" fill="none" stroke="#f4fff8" stroke-width="5.6" stroke-linecap="round"/>
+  <rect x="7.2" y="28.2" width="14.2" height="21.6" rx="7.1" fill="#ff2d95" mask="url(#cup-l)"/>
+  <rect x="42.6" y="28.2" width="14.2" height="21.6" rx="7.1" fill="#00e5ff" mask="url(#cup-r)"/>
+  <circle cx="32" cy="40.2" r="7.4" fill="#c8ff3d"/>
+  <circle cx="32" cy="40.2" r="5.1" fill="none" stroke="#7a1fff" stroke-width="1.6"/>
+  <circle cx="32" cy="40.2" r="2.15" fill="#07040f"/>
+  <path fill="#c8ff3d" transform="translate(50.5 13.2) scale(7.2)" d="M0-1 L0.22-0.22 L1 0 L0.22 0.22 L0 1 L-0.22 0.22 L-1 0 L-0.22-0.22 Z"/>
+</svg>

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.1.4]
+
+### Added
+- SEO-vriendelijke blogmodule met artikelen, tags, overzicht, tagarchieven, RSS-feed, JSON-LD, sitemap en Filament-beheer via dedicated Actions.
+- Command-line contentlaag: Cursor kan landingspagina's, blogposts en foto's lokaal maken en bijwerken via `php artisan content:sync` zonder Coolify-deploy. Markdown en media staan in `content/`; Laravel blijft de runtime source of truth.
+
+## [0.1.3]
+
+### Added
+- AGENTS.md with Laravel architecture rules taken from BlijwinOS: Actions as the mutation layer, public identifiers, SoftDeletes and architecture tests.
+- `public_id` UUIDs and SoftDeletes on commercial records; Filament record routes reject numeric IDs.
+- Dedicated Actions for booking status, match responses, reviews, registration and entertainer dashboard mutations.
+- Footer, homepage, entertainer search and landing pages link to kidsdisco.eu and kidsdj-edwin.nl with their logos.
+
+### Changed
+- Controllers and Filament persist domain changes through `handle()` Actions instead of writing status directly.
+- Booking request, match and review `status` is no longer mass-assignable.
+
 ## [0.1.2]
 
 ### Added

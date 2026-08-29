@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use App\Enums\BookingRequestMatchStatus;
+use App\Support\Models\HasPublicIdentifier;
+use Database\Factories\BookingRequestMatchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'booking_request_id',
     'entertainer_id',
-    'status',
     'match_score',
     'distance_km',
     'travel_minutes',
@@ -23,6 +26,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class BookingRequestMatch extends Model
 {
+    /** @use HasFactory<BookingRequestMatchFactory> */
+    use HasFactory, HasPublicIdentifier, SoftDeletes;
+
     public function bookingRequest(): BelongsTo
     {
         return $this->belongsTo(BookingRequest::class);

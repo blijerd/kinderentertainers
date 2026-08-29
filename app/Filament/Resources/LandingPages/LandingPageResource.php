@@ -8,6 +8,7 @@ use App\Filament\Resources\LandingPages\Pages\ListLandingPages;
 use App\Filament\Resources\LandingPages\Schemas\LandingPageForm;
 use App\Filament\Resources\LandingPages\Tables\LandingPagesTable;
 use App\Models\LandingPage;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,7 +17,11 @@ use Filament\Tables\Table;
 
 class LandingPageResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = LandingPage::class;
+
+    protected static ?string $recordRouteKeyName = 'public_id';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 

@@ -42,8 +42,7 @@ class CreateBookingQuote
         $depositPercentage = (int) ($entertainer?->deposit_percentage ?? 0);
         $terms = $this->legalDocuments->currentVersion(LegalDocumentType::Terms);
 
-        $bookingRequest->update([
-            'status' => BookingStatus::Option,
+        $bookingRequest->fill([
             'quote_performance_cents' => $performanceCents,
             'quote_travel_cents' => $travelCents,
             'quote_total_cents' => $totalCents,
@@ -66,6 +65,9 @@ class CreateBookingQuote
             'quote_terms_version' => $terms?->version_label,
             'quote_terms_body' => $terms?->body,
         ]);
+        $bookingRequest->forceFill([
+            'status' => BookingStatus::Option,
+        ])->save();
 
         return $bookingRequest->refresh();
     }

@@ -8,6 +8,7 @@ use App\Filament\Resources\Reviews\Pages\ListReviews;
 use App\Filament\Resources\Reviews\Schemas\ReviewForm;
 use App\Filament\Resources\Reviews\Tables\ReviewsTable;
 use App\Models\Review;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class ReviewResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = Review::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;

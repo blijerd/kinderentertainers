@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BookingQuoteController;
 use App\Http\Controllers\BookingRequestController;
 use App\Http\Controllers\BookingRequestMatchController;
@@ -19,11 +20,17 @@ use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SetupController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Webhooks\PaymentWebhookController;
+use App\Support\Content\ReservedPublicSlugs;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 Route::get('/robots.txt', RobotsController::class)->name('robots');
+
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/feed.xml', [BlogController::class, 'feed'])->name('blog.feed');
+Route::get('/blog/tag/{blogTag:slug}', [BlogController::class, 'tag'])->where('blogTag', '[a-z0-9-]+')->name('blog.tag');
+Route::get('/blog/{blogPost:slug}', [BlogController::class, 'show'])->where('blogPost', '[a-z0-9-]+')->name('blog.show');
 
 Route::get('/kinderentertainers', [EntertainerController::class, 'index'])->name('entertainers.index');
 Route::get('/kinderentertainers/{entertainer:slug}', [EntertainerController::class, 'show'])->name('entertainers.show');
@@ -99,5 +106,5 @@ Route::middleware(['auth', 'verified'])->prefix('klantportaal')->name('customer-
 });
 
 Route::get('/{landingPage:slug}', [LandingPageController::class, 'show'])
-    ->where('landingPage', '^(?!admin$|dashboard$|klantportaal$|kinderentertainers$|aanvragen$|aanvraag-bedankt$|reviews$|review-bedankt$|algemene-voorwaarden$|privacyverklaring$|cookieverklaring$|offertes$|login$|registreren$|logout$|setup$|sitemap\.xml$|webhooks$|email$|wachtwoord-vergeten$|wachtwoord-herstellen$)[a-z0-9-]+$')
+    ->where('landingPage', ReservedPublicSlugs::landingPageConstraint())
     ->name('landing-pages.show');

@@ -40,7 +40,12 @@ class CreateBookingRequest
         }
 
         return DB::transaction(function () use ($data): BookingRequest {
-            $bookingRequest = BookingRequest::create($data);
+            $status = $data['status'] ?? BookingStatus::New;
+            unset($data['status']);
+
+            $bookingRequest = new BookingRequest;
+            $bookingRequest->fill($data);
+            $bookingRequest->forceFill(['status' => $status])->save();
 
             if ($bookingRequest->isGeneral()) {
                 $skill = Skill::findOrFail($bookingRequest->skill_id);
@@ -61,16 +66,19 @@ class CreateBookingRequest
                     ->filter(fn (array $match): bool => $this->matchScoreService->isInsideWorkingArea($match[0], $match[1]['distance_km']))
                     ->sortByDesc(fn (array $match): int => $match[1]['score'])
                     ->each(function (array $match) use ($bookingRequest): void {
-                        $bookingRequestMatch = BookingRequestMatch::create([
+                        $bookingRequestMatch = new BookingRequestMatch;
+                        $bookingRequestMatch->fill([
                             'booking_request_id' => $bookingRequest->id,
                             'entertainer_id' => $match[0]->id,
-                            'status' => BookingRequestMatchStatus::Available,
                             'match_score' => $match[1]['score'],
                             'distance_km' => $match[1]['distance_km'],
                             'travel_minutes' => $match[1]['travel_minutes'],
                             'score_breakdown' => $match[1]['breakdown'],
                             'matched_at' => now(),
                         ]);
+                        $bookingRequestMatch->forceFill([
+                            'status' => BookingRequestMatchStatus::Available,
+                        ])->save();
 
                         $this->notifications->notifyNewMatch($bookingRequestMatch);
                     });

@@ -2,7 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CreateAvailability;
+use App\Actions\CreateAvailabilityRule;
 use App\Actions\CreateBookingQuote;
+use App\Actions\CreateRate;
+use App\Actions\DeleteAvailability;
+use App\Actions\DeleteAvailabilityRule;
+use App\Actions\DeleteRate;
+use App\Actions\EnsureDefaultEntertainerIntegrations;
+use App\Actions\RecalculateEntertainerProfileQuality;
+use App\Actions\RecordBookingRequestEvent;
+use App\Actions\RequestEntertainerPublication;
+use App\Actions\RespondToBookingRequestMatch;
+use App\Actions\SyncEntertainerSkills;
+use App\Actions\TransitionBookingRequestStatus;
+use App\Actions\UpdateAvailability;
+use App\Actions\UpdateAvailabilityRule;
+use App\Actions\UpdateEntertainerBilling;
+use App\Actions\UpdateEntertainerIntegration;
+use App\Actions\UpdateEntertainerProfile;
+use App\Actions\UpdateRate;
 use App\Enums\AccountingProvider;
 use App\Enums\AvailabilityStatus;
 use App\Enums\BookingRequestEventType;
@@ -19,23 +38,24 @@ use App\Models\Entertainer;
 use App\Models\EntertainerIntegration;
 use App\Models\Rate;
 use App\Models\Skill;
-use App\Services\IntegrationHealthService;
-use App\Services\Integrations\CalendarIntegrationService;
 use App\Services\ProfileQualityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class EntertainerDashboardController extends Controller
 {
-    public function index(Request $request, ProfileQualityService $profileQualityService): View
-    {
+    public function index(
+        Request $request,
+        ProfileQualityService $profileQualityService,
+        EnsureDefaultEntertainerIntegrations $ensureDefaultIntegrations,
+        RecalculateEntertainerProfileQuality $recalculateProfileQuality,
+    ): View {
         $entertainer = $this->currentEntertainer($request);
 
-        $this->ensureDefaultIntegrations($entertainer);
+        $ensureDefaultIntegrations->handle($entertainer);
 
         $entertainer->load([
             'skills',
@@ -56,12 +76,8 @@ class EntertainerDashboardController extends Controller
             ->latest()
             ->paginate(10, ['*'], 'matches');
         $skills = Skill::where('active', true)->orderBy('name')->get();
-        $profileQualityScore = $profileQualityService->score($entertainer);
-        $profileMissingItems = $profileQualityService->missingItems($entertainer);
-
-        if ($entertainer->profile_quality_score !== $profileQualityScore) {
-            $entertainer->forceFill(['profile_quality_score' => $profileQualityScore])->save();
-        }
+        $profileQualityScore = $recalculateProfileQuality->handle($entertainer);
+        $profileMissingItems = $profileQualityService->missingItems($entertainer->refresh());
 
         return view('dashboard.index', compact(
             'entertainer',
@@ -73,7 +89,7 @@ class EntertainerDashboardController extends Controller
         ));
     }
 
-    public function updateProfile(Request $request): RedirectResponse
+    public function updateProfile(Request $request, UpdateEntertainerProfile $updateEntertainerProfile): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
@@ -126,108 +142,23 @@ class EntertainerDashboardController extends Controller
             'gallery_photos' => 'galerijfoto\'s',
         ]);
 
-        $validated['profile_highlights'] = collect(preg_split('/\r\n|\r|\n/', $validated['profile_highlights'] ?? ''))
-            ->map(fn (string $highlight): string => trim($highlight))
-            ->filter()
-            ->values()
-            ->all();
-        $validated['event_types'] = $this->linesToArray($validated['event_types'] ?? '');
-        $validated['languages'] = $this->linesToArray($validated['languages'] ?? '');
-        $validated['packages'] = $this->linesToOfferItems($validated['packages'] ?? '');
-        $validated['extras'] = $this->linesToOfferItems($validated['extras'] ?? '');
-
-        unset($validated['profile_photo'], $validated['gallery_photos'], $validated['remove_gallery_photos']);
-
-        $galleryPhotoPaths = collect($entertainer->gallery_photo_paths ?? []);
-        $removedGalleryPhotoPaths = collect($request->input('remove_gallery_photos', []))
-            ->filter()
-            ->intersect($galleryPhotoPaths)
-            ->values();
-        $newGalleryPhotos = $request->file('gallery_photos', []);
-
-        if ($galleryPhotoPaths->count() - $removedGalleryPhotoPaths->count() + count($newGalleryPhotos) > 12) {
-            throw ValidationException::withMessages([
-                'gallery_photos' => 'Je kunt maximaal 12 galerijfoto\'s bewaren.',
-            ]);
-        }
-
-        if ($request->hasFile('profile_photo')) {
-            if ($entertainer->profile_photo_path) {
-                Storage::disk('public')->delete($entertainer->profile_photo_path);
-            }
-
-            $validated['profile_photo_path'] = $request->file('profile_photo')->store('entertainers/profile-photos', 'public');
-        }
-
-        if ($removedGalleryPhotoPaths->isNotEmpty()) {
-            Storage::disk('public')->delete($removedGalleryPhotoPaths->all());
-            $galleryPhotoPaths = $galleryPhotoPaths->reject(fn (string $path): bool => $removedGalleryPhotoPaths->contains($path));
-        }
-
-        foreach ($newGalleryPhotos as $galleryPhoto) {
-            $galleryPhotoPaths->push($galleryPhoto->store('entertainers/gallery', 'public'));
-        }
-
-        $validated['gallery_photo_paths'] = $galleryPhotoPaths->values()->all();
-
-        $entertainer->update($validated);
+        $updateEntertainerProfile->handle($entertainer, $validated, $request);
 
         return back()->with('status', 'Profiel bijgewerkt.');
     }
 
-    public function requestPublication(Request $request, ProfileQualityService $profileQualityService): RedirectResponse
+    public function requestPublication(Request $request, RequestEntertainerPublication $requestEntertainerPublication): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         $this->authorize('update', $entertainer);
 
-        $score = $profileQualityService->score($entertainer);
-
-        if ($score < 70) {
-            throw ValidationException::withMessages([
-                'publication' => 'Vul je profiel verder aan voordat je publicatie aanvraagt.',
-            ]);
-        }
-
-        $entertainer->update([
-            'profile_complete' => true,
-            'profile_quality_score' => $score,
-            'publication_requested_at' => now(),
-            'publication_reviewed_at' => null,
-            'publication_review_note' => null,
-        ]);
+        $requestEntertainerPublication->handle($entertainer);
 
         return back()->with('status', 'Publicatie aangevraagd. Een beheerder controleert je profiel.');
     }
 
-    private function linesToArray(string $value): array
-    {
-        return collect(preg_split('/\r\n|\r|\n/', $value))
-            ->map(fn (string $line): string => trim($line))
-            ->filter()
-            ->values()
-            ->all();
-    }
-
-    private function linesToOfferItems(string $value): array
-    {
-        return collect(preg_split('/\r\n|\r|\n/', $value))
-            ->map(fn (string $line): string => trim($line))
-            ->filter()
-            ->map(function (string $line): array {
-                [$name, $price, $description] = array_pad(array_map('trim', explode('|', $line, 3)), 3, null);
-
-                return [
-                    'name' => $name,
-                    'price_cents' => filled($price) ? (int) round(((float) str_replace(',', '.', $price)) * 100) : null,
-                    'description' => $description,
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    public function updateBilling(Request $request): RedirectResponse
+    public function updateBilling(Request $request, UpdateEntertainerBilling $updateEntertainerBilling): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
@@ -249,32 +180,24 @@ class EntertainerDashboardController extends Controller
 
         $validated['cash_payment_enabled'] = $request->boolean('cash_payment_enabled');
 
-        $entertainer->update($validated);
+        $updateEntertainerBilling->handle($entertainer, $validated);
 
         return back()->with('status', 'Facturatie-instellingen bijgewerkt.');
     }
 
-    public function updateIntegration(Request $request, EntertainerIntegration $integration, IntegrationHealthService $health): RedirectResponse
+    public function updateIntegration(Request $request, EntertainerIntegration $integration, UpdateEntertainerIntegration $updateEntertainerIntegration): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         abort_unless($integration->entertainer_id === $entertainer->id, 403);
         $this->authorize('update', $entertainer);
 
-        $validated = $this->validateIntegration($request, $integration);
-
-        $integration->update($validated);
-        $check = $health->check($integration->refresh());
-        $integration->update([
-            'last_checked_at' => now(),
-            'last_check_status' => $check['status'],
-            'last_check_message' => $check['message'],
-        ]);
+        $updateEntertainerIntegration->handle($integration, $this->validateIntegration($request, $integration));
 
         return back()->with('status', $integration->provider->label().' bijgewerkt.');
     }
 
-    public function updateSkills(Request $request): RedirectResponse
+    public function updateSkills(Request $request, SyncEntertainerSkills $syncEntertainerSkills): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
@@ -285,107 +208,105 @@ class EntertainerDashboardController extends Controller
             'skills.*' => ['integer', Rule::exists('skills', 'id')->where('active', true)],
         ]);
 
-        $entertainer->skills()->sync($validated['skills'] ?? []);
+        $syncEntertainerSkills->handle($entertainer, $validated['skills'] ?? []);
 
         return back()->with('status', 'Skills bijgewerkt.');
     }
 
-    public function storeAvailability(Request $request): RedirectResponse
+    public function storeAvailability(Request $request, CreateAvailability $createAvailability): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         $this->authorize('create', Availability::class);
 
-        $validated = $this->validateAvailability($request);
-        $entertainer->availabilities()->create($validated);
+        $createAvailability->handle($entertainer, $this->validateAvailability($request));
 
         return back()->with('status', 'Beschikbaarheid toegevoegd.');
     }
 
-    public function updateAvailability(Request $request, Availability $availability): RedirectResponse
+    public function updateAvailability(Request $request, Availability $availability, UpdateAvailability $updateAvailability): RedirectResponse
     {
         $this->authorize('update', $availability);
 
-        $availability->update($this->validateAvailability($request));
+        $updateAvailability->handle($availability, $this->validateAvailability($request));
 
         return back()->with('status', 'Beschikbaarheid bijgewerkt.');
     }
 
-    public function destroyAvailability(Availability $availability): RedirectResponse
+    public function destroyAvailability(Availability $availability, DeleteAvailability $deleteAvailability): RedirectResponse
     {
         $this->authorize('delete', $availability);
 
-        $availability->delete();
+        $deleteAvailability->handle($availability);
 
         return back()->with('status', 'Beschikbaarheid verwijderd.');
     }
 
-    public function storeAvailabilityRule(Request $request): RedirectResponse
+    public function storeAvailabilityRule(Request $request, CreateAvailabilityRule $createAvailabilityRule): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         $this->authorize('update', $entertainer);
 
-        $entertainer->availabilityRules()->create($this->validateAvailabilityRule($request));
+        $createAvailabilityRule->handle($entertainer, $this->validateAvailabilityRule($request));
 
         return back()->with('status', 'Herhalende beschikbaarheid toegevoegd.');
     }
 
-    public function updateAvailabilityRule(Request $request, AvailabilityRule $availabilityRule): RedirectResponse
+    public function updateAvailabilityRule(Request $request, AvailabilityRule $availabilityRule, UpdateAvailabilityRule $updateAvailabilityRule): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         abort_unless($availabilityRule->entertainer_id === $entertainer->id, 403);
         $this->authorize('update', $entertainer);
 
-        $availabilityRule->update($this->validateAvailabilityRule($request));
+        $updateAvailabilityRule->handle($availabilityRule, $this->validateAvailabilityRule($request));
 
         return back()->with('status', 'Herhalende beschikbaarheid bijgewerkt.');
     }
 
-    public function destroyAvailabilityRule(Request $request, AvailabilityRule $availabilityRule): RedirectResponse
+    public function destroyAvailabilityRule(Request $request, AvailabilityRule $availabilityRule, DeleteAvailabilityRule $deleteAvailabilityRule): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         abort_unless($availabilityRule->entertainer_id === $entertainer->id, 403);
         $this->authorize('update', $entertainer);
 
-        $availabilityRule->delete();
+        $deleteAvailabilityRule->handle($availabilityRule);
 
         return back()->with('status', 'Herhalende beschikbaarheid verwijderd.');
     }
 
-    public function storeRate(Request $request): RedirectResponse
+    public function storeRate(Request $request, CreateRate $createRate): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
         $this->authorize('create', Rate::class);
 
-        $validated = $this->validateRate($request, $entertainer);
-        $entertainer->rates()->create($validated);
+        $createRate->handle($entertainer, $this->validateRate($request, $entertainer));
 
         return back()->with('status', 'Tarief toegevoegd.');
     }
 
-    public function updateRate(Request $request, Rate $rate): RedirectResponse
+    public function updateRate(Request $request, Rate $rate, UpdateRate $updateRate): RedirectResponse
     {
         $this->authorize('update', $rate);
 
-        $rate->update($this->validateRate($request, $rate->entertainer, $rate));
+        $updateRate->handle($rate, $this->validateRate($request, $rate->entertainer, $rate));
 
         return back()->with('status', 'Tarief bijgewerkt.');
     }
 
-    public function destroyRate(Rate $rate): RedirectResponse
+    public function destroyRate(Rate $rate, DeleteRate $deleteRate): RedirectResponse
     {
         $this->authorize('delete', $rate);
 
-        $rate->delete();
+        $deleteRate->handle($rate);
 
         return back()->with('status', 'Tarief verwijderd.');
     }
 
-    public function updateBookingStatus(Request $request, BookingRequest $bookingRequest, CalendarIntegrationService $calendar): RedirectResponse
+    public function updateBookingStatus(Request $request, BookingRequest $bookingRequest, TransitionBookingRequestStatus $transition): RedirectResponse
     {
         $this->authorize('update', $bookingRequest);
 
@@ -394,30 +315,17 @@ class EntertainerDashboardController extends Controller
             'cancellation_reason' => ['nullable', 'required_if:status,geannuleerd', 'string', 'max:5000'],
         ]);
 
-        $data = ['status' => BookingStatus::from($validated['status'])];
-
-        if ($data['status'] === BookingStatus::Cancelled) {
-            $data += [
-                'cancelled_at' => now(),
-                'cancelled_by' => 'entertainer',
-                'cancellation_reason' => $validated['cancellation_reason'] ?? null,
-            ];
-        }
-
-        $bookingRequest->update($data);
-
-        if ($data['status'] === BookingStatus::Cancelled) {
-            try {
-                $calendar->syncBooking($bookingRequest->refresh());
-            } catch (\RuntimeException) {
-                // Scheduled sync will retry and expose the failure in the admin signals.
-            }
-        }
+        $transition->handle(
+            $bookingRequest,
+            BookingStatus::from($validated['status']),
+            $validated['cancellation_reason'] ?? null,
+            'entertainer',
+        );
 
         return back()->with('status', 'Aanvraagstatus bijgewerkt.');
     }
 
-    public function storeBookingRequestEvent(Request $request, BookingRequest $bookingRequest): RedirectResponse
+    public function storeBookingRequestEvent(Request $request, BookingRequest $bookingRequest, RecordBookingRequestEvent $recordBookingRequestEvent): RedirectResponse
     {
         $this->authorize('update', $bookingRequest);
 
@@ -434,15 +342,16 @@ class EntertainerDashboardController extends Controller
 
         $eventType = BookingRequestEventType::from($validated['type']);
 
-        $bookingRequest->events()->create([
-            'type' => $eventType,
-            'actor_type' => 'entertainer',
-            'actor_name' => $request->user()->name,
-            'body' => $validated['body'],
-            'visible_to_entertainer' => true,
-            'visible_to_customer' => $eventType === BookingRequestEventType::EntertainerResponse,
-            'user_id' => $request->user()->id,
-        ]);
+        $recordBookingRequestEvent->handle(
+            $bookingRequest,
+            $eventType,
+            $validated['body'],
+            'entertainer',
+            $request->user()->name,
+            true,
+            $eventType === BookingRequestEventType::EntertainerResponse,
+            $request->user(),
+        );
 
         return back()->with('status', $eventType === BookingRequestEventType::InternalNote ? 'Notitie toegevoegd.' : 'Reactie toegevoegd.');
     }
@@ -474,7 +383,7 @@ class EntertainerDashboardController extends Controller
         return back()->with('status', 'Offerte aangemaakt. Deel de akkoordlink met de klant.');
     }
 
-    public function updateMatchResponse(Request $request, BookingRequestMatch $match): RedirectResponse
+    public function updateMatchResponse(Request $request, BookingRequestMatch $match, RespondToBookingRequestMatch $respondToBookingRequestMatch): RedirectResponse
     {
         $entertainer = $this->currentEntertainer($request);
 
@@ -494,34 +403,7 @@ class EntertainerDashboardController extends Controller
             return back()->with('status', 'Deze match is al gekozen.');
         }
 
-        $match->update([
-            'status' => match ($validated['response']) {
-                'accepted' => BookingRequestMatchStatus::Accepted,
-                'available' => BookingRequestMatchStatus::Available,
-                default => BookingRequestMatchStatus::Rejected,
-            },
-            'price_indication_cents' => in_array($validated['response'], ['available', 'accepted'], true) && filled($validated['price_indication_euros'] ?? null)
-                ? (int) round(((float) $validated['price_indication_euros']) * 100)
-                : null,
-            'response_message' => $validated['response_message'] ?? null,
-            'responded_at' => now(),
-        ]);
-
-        if (filled($validated['response_message'] ?? null)) {
-            $match->bookingRequest->events()->create([
-                'type' => BookingRequestEventType::EntertainerResponse,
-                'actor_type' => 'entertainer',
-                'actor_name' => $entertainer->name,
-                'body' => $validated['response_message'],
-                'visible_to_entertainer' => true,
-                'visible_to_customer' => true,
-                'user_id' => $request->user()->id,
-            ]);
-        }
-
-        if ($validated['response'] === 'accepted') {
-            $match->bookingRequest()->update(['status' => BookingStatus::Option]);
-        }
+        $respondToBookingRequestMatch->handle($match, $entertainer, $validated, $request->user());
 
         return back()->with('status', 'Reactie opgeslagen.');
     }
@@ -533,13 +415,6 @@ class EntertainerDashboardController extends Controller
         abort_unless($entertainer, 403);
 
         return $entertainer;
-    }
-
-    private function ensureDefaultIntegrations(Entertainer $entertainer): void
-    {
-        foreach (IntegrationProvider::cases() as $provider) {
-            $entertainer->integrations()->firstOrCreate(['provider' => $provider]);
-        }
     }
 
     private function validateIntegration(Request $request, EntertainerIntegration $integration): array
@@ -744,7 +619,8 @@ class EntertainerDashboardController extends Controller
                 Rule::enum(CustomerType::class),
                 Rule::unique('rates', 'customer_type')
                     ->where('entertainer_id', $entertainer->id)
-                    ->ignore($rate),
+                    ->ignore($rate)
+                    ->withoutTrashed(),
             ],
             'starting_rate_euros' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'hourly_rate_euros' => ['required', 'numeric', 'min:0', 'max:999999.99'],

@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   tests:
@@ -24,6 +32,18 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:8vUXYwifgqNGjxLZdIzq4yKLkEbhc7iPF1VMFUAdKbE=
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: kinderentertainers_test
+      DB_USERNAME: kinderentertainers
+      DB_PASSWORD: secret
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,19 +52,37 @@ jobs:
           php-version: "8.3"
           extensions: pdo_pgsql, mbstring, xml, ctype, json, bcmath, intl, gd, zip
           coverage: none
+          tools: composer:v2
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
 
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Wait for PostgreSQL
+        run: |
+          for attempt in {1..30}; do
+            if php -r 'new PDO("pgsql:host=127.0.0.1;port=5432;dbname=kinderentertainers_test", "kinderentertainers", "secret");' >/dev/null 2>&1; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          exit 1
 
       - name: Install and build assets
         run: npm ci && npm run build
 
       - name: Run tests
-        env:
-          DB_PASSWORD: secret
         run: php artisan test --ansi

@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\Models\HasPublicIdentifier;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -21,13 +23,14 @@ use Illuminate\Support\Str;
     'meta_description',
     'canonical_url',
     'og_image_path',
+    'source_path',
     'noindex',
     'is_published',
     'published_at',
 ])]
 class LandingPage extends Model
 {
-    use HasFactory;
+    use HasFactory, HasPublicIdentifier, SoftDeletes;
 
     public function getRouteKeyName(): string
     {

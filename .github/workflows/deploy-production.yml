@@ -1,0 +1,123 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DEPLOY to confirm a production deploy
+        required: true
+        type: string
+      force_rebuild:
+        description: Force Coolify rebuild without cache
+        required: false
+        type: boolean
+        default: false
+      include_worker_scheduler:
+        description: Also deploy ke-worker and ke-scheduler
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-coolify-production:
+    name: Trigger ke-productie
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy]') }}
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Require main branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "Refusing production deploy from ${GITHUB_REF}. Only refs/heads/main is allowed." >&2
+            exit 1
+          fi
+
+      - name: Confirm intentional production deploy
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${CONFIRM}" != "DEPLOY" ]]; then
+            echo "Refusing production deploy. Set confirm input exactly to DEPLOY." >&2
+            exit 1
+          fi
+
+      - name: Validate deploy secrets
+        env:
+          PRODUCTION_DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_DEPLOY_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${PRODUCTION_DEPLOY_SSH_PRIVATE_KEY}" ]]; then
+            echo "Missing GitHub secret PRODUCTION_DEPLOY_SSH_PRIVATE_KEY." >&2
+            exit 1
+          fi
+
+      - name: Prepare SSH key and known_hosts
+        env:
+          PRODUCTION_DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_DEPLOY_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d "${HOME}/.ssh"
+          printf '%s\n' "${PRODUCTION_DEPLOY_SSH_PRIVATE_KEY}" > "${HOME}/.ssh/coolify_deploy"
+          chmod 600 "${HOME}/.ssh/coolify_deploy"
+          ssh-keyscan -p 22 -H server.blijevent.nl >> "${HOME}/.ssh/known_hosts"
+          chmod 644 "${HOME}/.ssh/known_hosts"
+
+      - name: Trigger Coolify production deploy over restricted SSH
+        env:
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
+          INCLUDE_WORKER_SCHEDULER: ${{ inputs.include_worker_scheduler }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The deploy key is forced-command only:
+          # /usr/local/sbin/kinderentertainers-coolify-github-deploy.sh
+          # It can queue Coolify deploys for allowlisted apps; it cannot open a shell.
+          FORCE="${FORCE_REBUILD:-false}"
+          INCLUDE="${INCLUDE_WORKER_SCHEDULER:-true}"
+
+          APPS="web"
+          if [[ "${INCLUDE}" == "true" ]]; then
+            APPS="web,worker,scheduler"
+          fi
+
+          REMOTE_CMD="deploy --apps=${APPS}"
+          if [[ "${FORCE}" == "true" ]]; then
+            REMOTE_CMD="${REMOTE_CMD} --force"
+          fi
+
+          RESPONSE="$(
+            ssh -F /dev/null \
+              -o IdentitiesOnly=yes \
+              -o BatchMode=yes \
+              -i "${HOME}/.ssh/coolify_deploy" \
+              root@server.blijevent.nl \
+              "${REMOTE_CMD}"
+          )"
+
+          echo "Coolify production deployment triggered."
+          echo "Command: ${REMOTE_CMD}"
+          echo "Response: ${RESPONSE}"
+          echo "Database migrations are handled by the Docker web entrypoint (php artisan migrate --force)."

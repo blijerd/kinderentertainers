@@ -3,13 +3,17 @@
 namespace App\Models;
 
 use App\Enums\LegalDocumentType;
+use App\Support\Models\HasPublicIdentifier;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['type', 'title', 'is_active'])]
 class LegalDocument extends Model
 {
+    use HasPublicIdentifier, SoftDeletes;
+
     public function versions(): HasMany
     {
         return $this->hasMany(LegalDocumentVersion::class);

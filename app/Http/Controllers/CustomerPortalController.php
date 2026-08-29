@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AcceptBookingQuote;
+use App\Actions\CancelBookingRequest;
+use App\Actions\RecordBookingRequestEvent;
+use App\Actions\ToggleEntertainerFavorite;
+use App\Actions\UpdateBookingRequestDetails;
 use App\Enums\BookingRequestEventType;
 use App\Enums\BookingStatus;
 use App\Models\BookingRequest;
 use App\Models\Entertainer;
 use App\Services\BookingDocumentService;
-use App\Services\Integrations\CalendarIntegrationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,7 +50,7 @@ class CustomerPortalController extends Controller
         ]);
     }
 
-    public function update(Request $request, BookingRequest $bookingRequest): RedirectResponse
+    public function update(Request $request, BookingRequest $bookingRequest, UpdateBookingRequestDetails $updateBookingRequestDetails): RedirectResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
 
@@ -74,12 +77,12 @@ class CustomerPortalController extends Controller
             'message' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $bookingRequest->update($validated);
+        $updateBookingRequestDetails->handle($bookingRequest, $validated);
 
         return back()->with('status', 'Je aanvraag is bijgewerkt.');
     }
 
-    public function storeMessage(Request $request, BookingRequest $bookingRequest): RedirectResponse
+    public function storeMessage(Request $request, BookingRequest $bookingRequest, RecordBookingRequestEvent $recordBookingRequestEvent): RedirectResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
 
@@ -89,23 +92,23 @@ class CustomerPortalController extends Controller
             'body' => 'bericht',
         ]);
 
-        $bookingRequest->events()->create([
-            'type' => BookingRequestEventType::CustomerMessage,
-            'actor_type' => 'customer',
-            'actor_name' => $request->user()->name,
-            'body' => $validated['body'],
-            'visible_to_entertainer' => true,
-            'visible_to_customer' => true,
-            'user_id' => $request->user()->id,
-        ]);
+        $recordBookingRequestEvent->handle(
+            $bookingRequest,
+            BookingRequestEventType::CustomerMessage,
+            $validated['body'],
+            'customer',
+            $request->user()->name,
+            true,
+            true,
+            $request->user(),
+        );
 
         return back()->with('status', 'Bericht geplaatst.');
     }
 
-    public function cancel(Request $request, BookingRequest $bookingRequest, CalendarIntegrationService $calendar): RedirectResponse
+    public function cancel(Request $request, BookingRequest $bookingRequest, CancelBookingRequest $cancelBookingRequest): RedirectResponse
     {
         $this->authorizeCustomer($request, $bookingRequest);
-        abort_if(in_array($bookingRequest->status, [BookingStatus::Rejected, BookingStatus::Cancelled], true), Response::HTTP_UNPROCESSABLE_ENTITY);
 
         $validated = $request->validate([
             'cancellation_reason' => ['required', 'string', 'max:5000'],
@@ -113,34 +116,21 @@ class CustomerPortalController extends Controller
             'cancellation_reason' => 'reden',
         ]);
 
-        $bookingRequest->update([
-            'status' => BookingStatus::Cancelled,
-            'cancelled_at' => now(),
-            'cancelled_by' => 'customer',
-            'cancellation_reason' => $validated['cancellation_reason'],
-        ]);
-
-        try {
-            $calendar->syncBooking($bookingRequest->refresh());
-        } catch (\RuntimeException) {
-            // Scheduled sync will retry and expose the failure in the admin signals.
-        }
+        $cancelBookingRequest->handle($bookingRequest, $validated['cancellation_reason'], 'customer');
 
         return back()->with('status', 'De aanvraag is geannuleerd.');
     }
 
-    public function favorite(Request $request, Entertainer $entertainer): RedirectResponse
+    public function favorite(Request $request, Entertainer $entertainer, ToggleEntertainerFavorite $toggleEntertainerFavorite): RedirectResponse
     {
-        abort_unless($entertainer->active, Response::HTTP_NOT_FOUND);
-
-        $request->user()->favoriteEntertainers()->syncWithoutDetaching([$entertainer->id]);
+        $toggleEntertainerFavorite->handle($request->user(), $entertainer, true);
 
         return back()->with('status', "{$entertainer->name} is opgeslagen bij je favorieten.");
     }
 
-    public function unfavorite(Request $request, Entertainer $entertainer): RedirectResponse
+    public function unfavorite(Request $request, Entertainer $entertainer, ToggleEntertainerFavorite $toggleEntertainerFavorite): RedirectResponse
     {
-        $request->user()->favoriteEntertainers()->detach($entertainer->id);
+        $toggleEntertainerFavorite->handle($request->user(), $entertainer, false);
 
         return back()->with('status', "{$entertainer->name} is verwijderd uit je favorieten.");
     }
@@ -170,7 +160,7 @@ class CustomerPortalController extends Controller
         $bookingRequest->load(['entertainer', 'skill']);
         abort_unless(in_array($type, ['quote', 'confirmation', 'invoice', 'cancellation'], true), Response::HTTP_NOT_FOUND);
 
-        $filename = 'aanvraag-'.$bookingRequest->id.'-'.$type.'.pdf';
+        $filename = 'aanvraag-'.$bookingRequest->public_id.'-'.$type.'.pdf';
 
         return response()->streamDownload(function () use ($documents, $bookingRequest, $type): void {
             echo $documents->pdf($bookingRequest, $type);
@@ -194,32 +184,5 @@ class CustomerPortalController extends Controller
         $user = $request->user();
 
         return $bookingRequest->customer_id === $user->id || strcasecmp($bookingRequest->email, $user->email) === 0;
-    }
-
-    private function documentBody(BookingRequest $bookingRequest): string
-    {
-        return implode(PHP_EOL, [
-            'Aanvraag '.$bookingRequest->id,
-            'Status: '.$bookingRequest->status->label(),
-            'Naam: '.$bookingRequest->name,
-            'E-mail: '.$bookingRequest->email,
-            'Telefoon: '.$bookingRequest->phone,
-            'Evenement: '.$bookingRequest->event_date->format('d-m-Y').' van '.$bookingRequest->start_time->format('H:i').' tot '.$bookingRequest->end_time->format('H:i'),
-            'Adres: '.$bookingRequest->address.', '.$bookingRequest->postal_code.' '.$bookingRequest->city,
-            'Entertainer: '.($bookingRequest->entertainer?->name ?? 'Nog te kiezen'),
-            'Skill: '.($bookingRequest->skill?->name ?? implode(', ', $bookingRequest->desired_skills ?? [])),
-            'Bericht: '.($bookingRequest->message ?: '-'),
-            'Klantbericht: '.($bookingRequest->customer_message ?: '-'),
-            'Offerte geaccepteerd: '.($bookingRequest->quote_accepted_at?->format('d-m-Y H:i') ?? 'Nee'),
-            'Overeenkomstversie: '.($bookingRequest->agreement_version ?: '-'),
-            'Aanbetaling: '.($bookingRequest->deposit_cents ? '€ '.number_format($bookingRequest->deposit_cents / 100, 2, ',', '.') : '-'),
-            'Betaalstatus: '.$bookingRequest->payment_status,
-            'Factuurstatus: '.$bookingRequest->invoice_status,
-            'Factuur via entertainer: Ja',
-            'Betaalprovider entertainer: '.($bookingRequest->payment_provider ?: '-'),
-            'Contant betalen toegestaan: '.($bookingRequest->cash_payment_allowed ? 'Ja' : 'Nee'),
-            'Annulering: '.($bookingRequest->cancelled_at ? $bookingRequest->cancelled_at->format('d-m-Y H:i').' door '.$bookingRequest->cancelled_by : '-'),
-            'Annuleringsreden: '.($bookingRequest->cancellation_reason ?: '-'),
-        ]).PHP_EOL;
     }
 }

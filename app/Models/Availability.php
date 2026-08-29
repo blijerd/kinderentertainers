@@ -3,18 +3,20 @@
 namespace App\Models;
 
 use App\Enums\AvailabilityStatus;
+use App\Support\Models\HasPublicIdentifier;
 use Database\Factories\AvailabilityFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['entertainer_id', 'date', 'start_time', 'end_time', 'status', 'internal_note'])]
 class Availability extends Model
 {
     /** @use HasFactory<AvailabilityFactory> */
-    use HasFactory;
+    use HasFactory, HasPublicIdentifier, SoftDeletes;
 
     public function entertainer(): BelongsTo
     {

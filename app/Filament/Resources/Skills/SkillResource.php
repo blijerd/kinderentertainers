@@ -8,6 +8,7 @@ use App\Filament\Resources\Skills\Pages\ListSkills;
 use App\Filament\Resources\Skills\Schemas\SkillForm;
 use App\Filament\Resources\Skills\Tables\SkillsTable;
 use App\Models\Skill;
+use App\Support\Filament\Concerns\ResolvesPublicRecordRouteBinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class SkillResource extends Resource
 {
+    use ResolvesPublicRecordRouteBinding;
+
     protected static ?string $model = Skill::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

@@ -4,6 +4,7 @@
     'canonicalUrl' => null,
     'robots' => null,
     'ogImage' => null,
+    'ogType' => 'website',
 ])
 
 <!DOCTYPE html>
@@ -31,7 +32,8 @@
     @if ($ogImage)
         <meta property="og:image" content="{{ $ogImage }}">
     @endif
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{{ $ogType }}">
+    {{ $head ?? '' }}
     <script>
         (() => {
             let prefs = {};
@@ -57,6 +59,7 @@
             </a>
             <nav class="flex items-center gap-3 text-sm font-bold text-slate-700 dark:text-slate-200 sm:gap-5">
                 <a href="{{ route('entertainers.index') }}" class="hover:text-brand-teal">Entertainers</a>
+                <a href="{{ route('blog.index') }}" class="hover:text-brand-teal">Blog</a>
                 <a href="{{ route('booking-requests.general.create') }}" class="hover:text-brand-teal">Aanvragen</a>
                 @auth
                     @if (auth()->user()->hasRole('klant') && ! auth()->user()->hasRole('entertainer'))
@@ -81,7 +84,11 @@
     </main>
 
     <footer class="border-t border-slate-200 bg-white/70 py-8 text-sm dark:border-slate-800 dark:bg-slate-950/70">
-        <div class="brand-shell flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-300">
+        <div class="brand-shell">
+            <x-related-brands />
+        </div>
+        <div class="brand-shell mt-6 flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-300">
+            <a href="{{ route('blog.index') }}" class="hover:text-brand-teal">Blog</a>
             <a href="{{ route('legal.terms') }}" class="hover:text-brand-teal">Algemene voorwaarden</a>
             <a href="{{ route('legal.privacy') }}" class="hover:text-brand-teal">Privacyverklaring</a>
             <a href="{{ route('legal.cookies') }}" class="hover:text-brand-teal">Cookieverklaring</a>
@@ -98,10 +105,11 @@
             @if (! empty($company['btw']))
                 <span>BTW-nr. {{ $company['btw'] }}</span>
             @endif
+            @include('partials.footer-build-ref')
         </div>
         @if (! empty($company['legal_name']) || ! empty($company['address']))
             <p class="brand-shell mt-3 text-xs text-slate-500 dark:text-slate-400">
-                {{ $company['legal_name'] }}
+                &copy; {{ $company['legal_name'] }} {{ now()->year }}
                 @if (! empty($company['address']))
                     · {{ $company['address'] }}
                 @endif

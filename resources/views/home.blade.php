@@ -60,4 +60,5 @@
             </div>
         </div>
     </section>
+    <x-related-brands variant="cards" />
 </x-layouts.app>
