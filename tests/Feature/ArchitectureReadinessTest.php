@@ -10,6 +10,7 @@ use App\Models\BlogPost;
 use App\Models\BlogTag;
 use App\Models\BookingRequest;
 use App\Models\BookingRequestMatch;
+use App\Models\ContentRedirect;
 use App\Models\Entertainer;
 use App\Models\Review;
 use App\Models\User;
@@ -31,6 +32,7 @@ class ArchitectureReadinessTest extends TestCase
         $review = Review::factory()->create();
         $blogPost = BlogPost::factory()->create();
         $blogTag = BlogTag::factory()->create();
+        $redirect = ContentRedirect::factory()->create();
 
         $user->delete();
         $entertainer->delete();
@@ -38,6 +40,7 @@ class ArchitectureReadinessTest extends TestCase
         $review->delete();
         $blogPost->delete();
         $blogTag->delete();
+        $redirect->delete();
 
         $this->assertSoftDeleted($user);
         $this->assertSoftDeleted($entertainer);
@@ -45,6 +48,7 @@ class ArchitectureReadinessTest extends TestCase
         $this->assertSoftDeleted($review);
         $this->assertSoftDeleted($blogPost);
         $this->assertSoftDeleted($blogTag);
+        $this->assertSoftDeleted($redirect);
     }
 
     public function test_public_identifiers_are_generated_uniquely(): void
@@ -73,7 +77,7 @@ class ArchitectureReadinessTest extends TestCase
 
     public function test_core_models_use_the_public_identifier_trait(): void
     {
-        foreach ([User::class, Entertainer::class, BookingRequest::class, Review::class, BlogPost::class, BlogTag::class] as $model) {
+        foreach ([User::class, Entertainer::class, BookingRequest::class, Review::class, BlogPost::class, BlogTag::class, ContentRedirect::class] as $model) {
             $this->assertContains(HasPublicIdentifier::class, class_uses_recursive($model));
         }
     }

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.5]
+
+### Added
+- CLI 301-redirects (`php artisan content:redirect` en `content/redirects.txt`) via Actions en middleware, zonder Coolify-deploy.
+
 ## [0.1.4]
 
 ### Added

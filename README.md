@@ -1,6 +1,6 @@
 # Kinderentertainers.nl
 
-Versie: `0.1.4`
+Versie: `0.1.5`
 
 Boekingsplatform voor kinderentertainers. Bezoekers zoeken op skill, regio, beschikbaarheid en werkgebied, doen een specifieke of algemene aanvraag, vergelijken beschikbare matches en entertainers beheren hun eigen profiel, skills, beschikbaarheid, tarieven, offertes, facturatie- en betaalinstellingen.
 
@@ -145,7 +145,7 @@ Laat `static.kinderentertainers.nl` naar dezelfde `public_html/` release wijzen 
 - Documentdownloads voor offerte, boekingsbevestiging, factuurinstructie en annulering.
 - Reviewflow met reviewlinks na bevestigde afgelopen boekingen en moderatie/publicatie.
 - Publieke blog met artikelen, tags, paginering, JSON-LD, RSS-feed en sitemap; slugs in plaats van database-ID's.
-- Content CLI voor landingspagina's, blogposts en foto's: schrijf markdown in `content/` en draai `php artisan content:sync` (lokaal zichtbaar zonder deploy).
+- Content CLI voor landingspagina's, blogposts, foto's en 301-redirects: schrijf markdown of `content/redirects.txt` en draai `php artisan content:sync` (lokaal zichtbaar zonder deploy).
 - Filament 5 adminresources voor beheer van gebruikers, entertainers, skills, beschikbaarheid, tarieven, aanvragen, landingspagina's, blogartikelen en blogtags.
 - Policies: admins mogen alles; entertainers beheren alleen eigen records.
 - Beschikbaarheidscheck controleert actieve entertainers en skills, beschikbare blokken, overlappende optie/bezet/niet-beschikbaar blokken en conflicterende specifieke of algemene aanvragen.
@@ -165,6 +165,7 @@ php artisan content:sync
 php artisan content:page schminker-kinderfeestje --title="Schminker voor kinderfeestje" --publish
 php artisan content:blog eerste-artikel --title="Eerste artikel" --tags="Kinderfeestje" --publish
 php artisan content:media content/media/hero.jpg --alt="Schminker"
+php artisan content:redirect /oude-pagina /kinderentertainers
 php artisan content:list
 ```
 
@@ -174,9 +175,10 @@ Bestanden:
 content/pages/{slug}.md
 content/blog/{slug}.md
 content/media/{bestand}.jpg
+content/redirects.txt
 ```
 
-Markdown gebruikt YAML-front matter (`title`, `slug`, `intro`, `published`, `tags`, `og_image` / `cover_image`, `cta_label`, `cta_url`). Verwijs in de body naar foto's met `![alt](media/hero.jpg)`. PostgreSQL blijft de runtime source of truth; de bestanden zijn het auteurformaat voor agents.
+Markdown gebruikt YAML-front matter (`title`, `slug`, `intro`, `published`, `tags`, `og_image` / `cover_image`, `cta_label`, `cta_url`). Verwijs in de body naar foto's met `![alt](media/hero.jpg)`. Redirects in `content/redirects.txt` als `/oud -> /nieuw`. PostgreSQL blijft de runtime source of truth; de bestanden zijn het auteurformaat voor agents.
 
 ## Testen
 

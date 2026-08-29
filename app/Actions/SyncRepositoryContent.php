@@ -12,6 +12,7 @@ class SyncRepositoryContent
     public function __construct(
         private readonly ImportContentMedia $importContentMedia,
         private readonly ImportContentDocument $importContentDocument,
+        private readonly ImportContentRedirects $importContentRedirects,
     ) {}
 
     public function handle(?string $path = null, bool $dryRun = false): ContentSyncReport
@@ -68,6 +69,10 @@ class SyncRepositoryContent
                 $report->errors[] = basename($file).': '.$exception->getMessage();
             }
         }
+
+        $redirects = $this->importContentRedirects->handle($root, $dryRun);
+        $report->redirects = $redirects['imported'];
+        $report->errors = [...$report->errors, ...$redirects['errors']];
 
         return $report;
     }

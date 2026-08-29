@@ -78,6 +78,7 @@ class ArchitectureMutationFlowTest extends TestCase
             'ContentUpsertPageCommand.php' => 'UpsertLandingPage',
             'ContentUpsertBlogCommand.php' => 'UpsertBlogPost',
             'ContentImportMediaCommand.php' => 'ImportContentMedia',
+            'ContentUpsertRedirectCommand.php' => 'UpsertContentRedirect',
         ];
 
         foreach ($commands as $file => $action) {

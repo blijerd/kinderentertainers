@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\BlogPost;
 use App\Models\ContentMedia;
+use App\Models\ContentRedirect;
 use App\Models\LandingPage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -134,5 +135,112 @@ MD);
         $media = ContentMedia::query()->where('original_filename', 'clown.png')->firstOrFail();
         $this->assertSame('Clown', $media->alt_text);
         Storage::disk('public')->assertExists($media->path);
+    }
+
+    public function test_content_redirect_command_creates_a_permanent_redirect(): void
+    {
+        $this->artisan('content:redirect', [
+            'from' => 'oude-pagina',
+            'to' => '/kinderentertainers',
+        ])->assertSuccessful();
+
+        $redirect = ContentRedirect::query()->where('from_path', '/oude-pagina')->firstOrFail();
+        $this->assertSame('/kinderentertainers', $redirect->to_url);
+        $this->assertSame(301, $redirect->status_code);
+
+        $this->get('/oude-pagina?ref=cli')
+            ->assertStatus(301)
+            ->assertRedirect('/kinderentertainers?ref=cli');
+    }
+
+    public function test_content_sync_imports_redirects_from_file(): void
+    {
+        File::put($this->contentPath.'/redirects.txt', <<<'TXT'
+# commentaar
+/ballonnen-oud -> /ballonnenclown-boeken
+/blog/oud-artikel /blog/eerste-blogartikel 301
+TXT);
+
+        $this->artisan('content:sync', ['--path' => $this->contentPath])->assertSuccessful();
+
+        $this->assertDatabaseHas('content_redirects', [
+            'from_path' => '/ballonnen-oud',
+            'to_url' => '/ballonnenclown-boeken',
+            'status_code' => 301,
+            'is_active' => true,
+        ]);
+
+        $this->get('/blog/oud-artikel')
+            ->assertStatus(301)
+            ->assertRedirect('/blog/eerste-blogartikel');
+    }
+
+    public function test_reserved_and_looping_redirects_are_rejected(): void
+    {
+        $this->artisan('content:redirect', [
+            'from' => '/blog',
+            'to' => '/kinderentertainers',
+        ])->assertFailed();
+
+        $this->artisan('content:redirect', [
+            'from' => '/zelfde',
+            'to' => '/zelfde',
+        ])->assertFailed();
+
+        $this->assertDatabaseMissing('content_redirects', ['from_path' => '/blog']);
+        $this->assertDatabaseMissing('content_redirects', ['from_path' => '/zelfde']);
+    }
+
+    public function test_redirect_from_published_landing_page_is_rejected_until_unpublished(): void
+    {
+        LandingPage::factory()->create([
+            'slug' => 'live-pagina',
+            'is_published' => true,
+        ]);
+
+        $this->artisan('content:redirect', [
+            'from' => '/live-pagina',
+            'to' => '/kinderentertainers',
+        ])->assertFailed();
+
+        $this->artisan('content:page', [
+            'slug' => 'live-pagina',
+            '--unpublish' => true,
+        ])->assertSuccessful();
+
+        $this->artisan('content:redirect', [
+            'from' => '/live-pagina',
+            'to' => '/kinderentertainers',
+        ])->assertSuccessful();
+
+        $this->get('/live-pagina')->assertStatus(301)->assertRedirect('/kinderentertainers');
+    }
+
+    public function test_disabled_and_deleted_redirects_are_not_applied(): void
+    {
+        $this->artisan('content:redirect', [
+            'from' => '/tijdelijk',
+            'to' => '/kinderentertainers',
+        ])->assertSuccessful();
+
+        $this->artisan('content:redirect', [
+            'from' => '/tijdelijk',
+            '--disable' => true,
+        ])->assertSuccessful();
+
+        $this->get('/tijdelijk')->assertNotFound();
+
+        $this->artisan('content:redirect', [
+            'from' => '/tijdelijk',
+            'to' => '/kinderentertainers',
+        ])->assertSuccessful();
+
+        $this->artisan('content:redirect', [
+            'from' => '/tijdelijk',
+            '--delete' => true,
+        ])->assertSuccessful();
+
+        $this->assertSoftDeleted('content_redirects', ['from_path' => '/tijdelijk']);
+        $this->get('/tijdelijk')->assertNotFound();
     }
 }

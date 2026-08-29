@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ApplyContentRedirects;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -11,6 +12,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(ApplyContentRedirects::class);
+
         $middleware->trustHosts(at: static function (): array {
             $hosts = [];
 

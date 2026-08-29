@@ -11,6 +11,7 @@ final class ContentSyncReport
         public int $media = 0,
         public int $pages = 0,
         public int $posts = 0,
+        public int $redirects = 0,
         public array $errors = [],
         public bool $dryRun = false,
     ) {}

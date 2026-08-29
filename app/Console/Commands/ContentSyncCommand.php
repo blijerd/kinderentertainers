@@ -11,7 +11,7 @@ class ContentSyncCommand extends Command
                             {--path= : Pad naar de contentmap (standaard: content/)}
                             {--dry-run : Toon wat er zou worden bijgewerkt zonder te schrijven}';
 
-    protected $description = 'Importeer landingspagina\'s, blogposts en foto\'s uit content/ naar de database zonder te deployen.';
+    protected $description = 'Importeer landingspagina\'s, blogposts, foto\'s en redirects uit content/ naar de database zonder te deployen.';
 
     public function handle(SyncRepositoryContent $sync): int
     {
@@ -22,7 +22,7 @@ class ContentSyncCommand extends Command
         $report = $sync->handle($path, $dryRun);
 
         $prefix = $dryRun ? 'Dry-run: ' : '';
-        $this->info("{$prefix}{$report->media} foto('s), {$report->pages} pagina('s) en {$report->posts} blogpost(s) verwerkt.");
+        $this->info("{$prefix}{$report->media} foto('s), {$report->pages} pagina('s), {$report->posts} blogpost(s) en {$report->redirects} redirect(s) verwerkt.");
 
         foreach ($report->errors as $error) {
             $this->error($error);

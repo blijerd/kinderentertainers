@@ -83,12 +83,13 @@ New risky functionality should be feature-flaggable when it can be rolled out in
 
 # Content CLI (no deploy)
 
-Agents create and update landing pages, blog posts and photos locally. Do not wait for Coolify.
+Agents create and update landing pages, blog posts, photos and 301 redirects locally. Do not wait for Coolify.
 
 1. Write markdown in `content/pages/` or `content/blog/` with YAML front matter.
 2. Put images in `content/media/` (JPG, PNG, GIF or WebP).
-3. Run `php artisan content:sync` (or `content:page`, `content:blog`, `content:media`).
-4. Preview on the local app. PostgreSQL is the runtime source of truth; files are the authoring format.
+3. Add redirects in `content/redirects.txt` (`/old -> /new`) or run `php artisan content:redirect /old /new`.
+4. Run `php artisan content:sync` (or `content:page`, `content:blog`, `content:media`, `content:redirect`).
+5. Preview on the local app. PostgreSQL is the runtime source of truth; files are the authoring format.
 
 Front matter keys are English: `title`, `slug`, `intro`, `published`, `published_at`, `noindex`, `tags`, `og_image`, `cover_image`, `cta_label`, `cta_url`, `seo_title`, `meta_description`. Body markdown may reference `media/filename.jpg`. Public URLs use slugs, never incremental IDs. Persist through Actions; do not write content from Livewire, Filament or controllers.
 
